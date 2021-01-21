@@ -1,0 +1,45 @@
+.program tmds_encode_1bpp
+
+; 1bpp black/white pixels go in, TMDS symbols come out
+; y is initialised to 0x60005555
+; Autopull enabled, threshold 32
+; Autopush enabled, threshold 16
+
+; x == 0 -> first branch nontaken, second taken
+; x == 1 -> first branch taken, second nontaken
+even_pixel:
+    out x, 1
+    jmp x--, skip1
+    mov y, !y
+skip1:
+    mov isr, ::y
+    jmp x--, skip2
+    mov y, !y
+skip2:
+    in y, 16
+
+odd_pixel:
+    out x, 1
+    jmp x--, skip3
+    mov isr, ::y
+skip3:
+    mov y, !y
+    jmp x--, skip4
+    mov isr, ::y
+skip4:
+    in y, 16
+
+
+% c-sdk {
+static inline void tmds_encode_1bpp_init(PIO pio, uint sm) {
+    uint offset = pio_add_program(pio, &tmds_encode_1bpp_program);
+    pio_sm_config c = tmds_encode_1bpp_program_get_default_config(offset);
+    sm_config_set_out_shift(&c, true, true, 32);
+    sm_config_set_in_shift(&c, false, true, 16);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_put_blocking(pio, sm, 0x60005555u);
+    pio_sm_exec(pio, sm, pio_encode_pull(false, true));
+    pio_sm_exec(pio, sm, pio_encode_out(pio_y, 32));
+    pio_sm_enable(pio, sm, true);
+}
+%}
