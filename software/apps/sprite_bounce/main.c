@@ -21,11 +21,8 @@
 // #define MODE_960x540p_60Hz
 // #define MODE_1280x720_30Hz
 
-// #include "testcard_320x240_rgb565.h"
-// #include "raspberry_128x128_rgab5515.h
+#include "raspberry_128x128_rgab5515.h"
 #include "eben_128x128_rgab5515.h"
-// #include "testcard_320x240_rgb332.h"
-// #include "raspberry_128x128_ragb2132.h"
 
 #if defined(MODE_640x480_60Hz)
 // DVDD 1.2V (1.1V seems ok too)
@@ -190,7 +187,7 @@ int main() {
 	for (int i = 0; i < N_BERRIES; ++i) {
 		berry[i].x = rand() % (xmax - xmin + 1) + xmin;
 		berry[i].y = rand() % (ymax - ymin + 1) + ymin;
-		berry[i].img = eben_128x128;
+		berry[i].img = i % 2 ? eben_128x128 : raspberry_128x128;
 		berry[i].log_size = 7;
 		berry[i].has_opacity_metadata = true; // Much faster non-AT blitting
 		berry[i].hflip = false;
