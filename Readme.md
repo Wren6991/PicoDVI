@@ -9,7 +9,7 @@ Quick links:
 
 [Board Schematic](hardware/board/picodvi.pdf)
 
-[Software Readme](software/)
+[Software Readme and Example Photos](software/)
 
 About this Project
 -----------------
