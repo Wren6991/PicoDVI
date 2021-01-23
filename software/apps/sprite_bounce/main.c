@@ -16,6 +16,7 @@
 
 // Pick one:
 #define MODE_640x480_60Hz
+// #define MODE_800x480_60Hz
 // #define MODE_800x600_60Hz
 // #define MODE_960x540p_60Hz
 // #define MODE_1280x720_30Hz
@@ -34,6 +35,13 @@
 #define VREG_VSEL VREG_VOLTAGE_1_20
 #define DVI_TIMING dvi_timing_640x480p_60hz
 
+#elif defined(MODE_800x480_60Hz)
+#define FRAME_WIDTH 400
+#define FRAME_HEIGHT 240
+#define BIT_CLOCK_MHZ 296
+#define VREG_VSEL VREG_VOLTAGE_1_20
+#define DVI_TIMING dvi_timing_800x480p_60hz
+
 #elif defined(MODE_800x600_60Hz)
 // DVDD 1.3V, going downhill with a tailwind
 #define FRAME_WIDTH 400
@@ -41,7 +49,6 @@
 #define BIT_CLOCK_MHZ 400
 #define VREG_VSEL VREG_VOLTAGE_1_30
 #define DVI_TIMING dvi_timing_800x600p_60hz
-
 
 #elif defined(MODE_960x540p_60Hz)
 // DVDD 1.25V (slower silicon may need the full 1.3, or just not work)

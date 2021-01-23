@@ -34,6 +34,22 @@ const struct dvi_timing dvi_timing_800x600p_60hz = {
 	.v_active_lines    = 600
 };
 
+// 800x480p 60 Hz (note this doesn't seem to be a CEA mode, I just used the
+// output of `cvt 800 480 60`), 295 MHz bit clock
+const struct dvi_timing dvi_timing_800x480p_60hz = {
+	.h_sync_polarity = false,
+	.h_front_porch   = 24,
+	.h_sync_width    = 72,
+	.h_back_porch    = 96,
+	.h_active_pixels = 800,
+
+	.v_sync_polarity = true,
+	.v_front_porch   = 3,
+	.v_sync_width    = 10,
+	.v_back_porch    = 7,
+	.v_active_lines  = 480
+};
+
 // SVGA reduced blanking (355 MHz bit clock) -- valid CVT mode, less common
 // than fully-blanked SVGA, but doesn't require such a high system clock
 const struct dvi_timing dvi_timing_800x600p_reduced_60hz = {
