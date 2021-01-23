@@ -43,23 +43,6 @@
 
 struct dvi_inst dvi0;
 
-void core1_main() {
-	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
-
-	while (queue_is_empty(&dvi0.q_colour_valid))
-		__wfe();
-	dvi_start(&dvi0);
-	while (true) {
-		uint32_t *tmdsbuf;
-		uint32_t *pixbuf;
-		queue_remove_blocking_u32(&dvi0.q_colour_valid, &pixbuf);
-		queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
-		tmds_encode_1bpp(pixbuf, tmdsbuf, FRAME_WIDTH);
-		queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
-		queue_add_blocking_u32(&dvi0.q_colour_free, &pixbuf);
-	}
-}
-
 int main() {
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(10);
@@ -76,21 +59,16 @@ int main() {
 	dvi0.timing = &DVI_TIMING;
 	dvi0.ser_cfg = DEFAULT_DVI_SERIAL_CONFIG;
 	dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
+	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
+	dvi_start(&dvi0);
 
-	// Core 1 will wait until it sees the first colour buffer, then start up the
-	// DVI signalling.
-	multicore_launch_core1(core1_main);
-
-	// Pass out pointers into our preprepared image, discard the pointers when
-	// returned to us. Use frame_ctr to scroll the image
-	uint frame_ctr = 0;
 	while (true) {
 		for (uint y = 0; y < FRAME_HEIGHT; ++y) {
-			const uint32_t *scanline = &((const uint32_t*)moon_img)[y * FRAME_WIDTH / 32];
-			queue_add_blocking_u32(&dvi0.q_colour_valid, &scanline);
-			while (queue_try_remove_u32(&dvi0.q_colour_free, &scanline))
-				;
+			const uint32_t *colourbuf = &((const uint32_t*)moon_img)[y * FRAME_WIDTH / 32];
+			uint32_t *tmdsbuf;
+			queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
+			tmds_encode_1bpp(colourbuf, tmdsbuf, FRAME_WIDTH);
+			queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
 		}
-		++frame_ctr;
 	}
 }
