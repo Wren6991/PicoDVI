@@ -40,6 +40,6 @@ static inline void tmds_encode_1bpp_init(PIO pio, uint sm) {
     pio_sm_put_blocking(pio, sm, 0x60005555u);
     pio_sm_exec(pio, sm, pio_encode_pull(false, true));
     pio_sm_exec(pio, sm, pio_encode_out(pio_y, 32));
-    pio_sm_enable(pio, sm, true);
+    pio_sm_set_enabled(pio, sm, true);
 }
 %}

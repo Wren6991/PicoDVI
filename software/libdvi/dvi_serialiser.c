@@ -37,6 +37,7 @@ void dvi_serialiser_init(struct dvi_serialiser_cfg *cfg) {
 	cfg->prog_offs_clk = offset_clk;
 
 	for (int i = 0; i < N_TMDS_LANES; ++i) {
+		pio_sm_claim(cfg->pio, cfg->sm_tmds[i]);
 		dvi_serialiser_program_init(
 			cfg->pio,
 			cfg->sm_tmds[i],
