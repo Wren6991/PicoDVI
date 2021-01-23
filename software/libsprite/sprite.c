@@ -131,15 +131,15 @@ static inline __attribute__((always_inline)) void _setup_interp_pix_coordgen(int
 	assert(sp->log_size + pixel_shift <= 16);
 
 	interp_config c0 = interp_default_config();
-	interp_config_add_raw(&c0, true);
-	interp_config_shift(&c0, 16 - pixel_shift);
-	interp_config_mask(&c0, pixel_shift, pixel_shift + sp->log_size - 1);
+	interp_config_set_add_raw(&c0, true);
+	interp_config_set_shift(&c0, 16 - pixel_shift);
+	interp_config_set_mask(&c0, pixel_shift, pixel_shift + sp->log_size - 1);
 	interp_set_config(interp, 0, &c0);
 
 	interp_config c1 = interp_default_config();
-	interp_config_add_raw(&c1, true);
-	interp_config_shift(&c1, 16 - sp->log_size - pixel_shift);
-	interp_config_mask(&c1, pixel_shift + sp->log_size, pixel_shift + 2 * sp->log_size - 1);
+	interp_config_set_add_raw(&c1, true);
+	interp_config_set_shift(&c1, 16 - sp->log_size - pixel_shift);
+	interp_config_set_mask(&c1, pixel_shift + sp->log_size, pixel_shift + 2 * sp->log_size - 1);
 	interp_set_config(interp, 1, &c1);
 
 	interp->base[2] = (uint32_t)sp->img;
