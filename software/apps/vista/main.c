@@ -37,17 +37,6 @@
 #define FRAMES_PER_IMAGE 300
 
 struct dvi_inst dvi0;
-
-void __scratch_x("dvi") dvi0_irq() {
-	dma_hw->ints0 = 1u << dvi0.dma_cfg[TMDS_SYNC_LANE].chan_ctrl;
-
-	static int count = 0;
-	if (++count == 4) {
-		count = 0;
-		dvi_dma_irq_handler(&dvi0);
-	}
-}
-
 struct semaphore dvi_start_sem;
 
 // Just dumped out register values from running the code in tmds_encode.c:

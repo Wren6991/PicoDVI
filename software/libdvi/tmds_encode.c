@@ -25,7 +25,7 @@ uint32_t __scratch_y("tmds_table_fullres") tmds_table_fullres_y[] = {
 // signed/bidirectional shift on interpolator, very slightly slower). The
 // return value is the size of left shift required.
 
-static int configure_interp_for_addrgen(interp_hw_t *interp, uint channel_msb, uint channel_lsb, uint pixel_lsb, uint pixel_width, uint lut_index_width, const uint32_t *lutbase) {
+static int __not_in_flash_func(configure_interp_for_addrgen)(interp_hw_t *interp, uint channel_msb, uint channel_lsb, uint pixel_lsb, uint pixel_width, uint lut_index_width, const uint32_t *lutbase) {
 	interp_config c;
 	const uint index_shift = 3; // scaled lookup for 8-byte LUT entries
 
@@ -60,7 +60,7 @@ static int configure_interp_for_addrgen(interp_hw_t *interp, uint channel_msb, u
 // of TMDS symbols from this colour channel. Number of pixels must be even,
 // pixel buffer must be word-aligned.
 
-void tmds_encode_data_channel_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
+void __not_in_flash_func(tmds_encode_data_channel_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
 	interp_hw_save_t interp0_save;
 	gpio_put(DEBUG_PIN0 + 1, 1);
 	interp_save(interp0_hw, &interp0_save);
@@ -74,7 +74,7 @@ void tmds_encode_data_channel_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, si
 }
 
 // As above, but 8 bits per pixel, multiple of 4 pixels, and still word-aligned.
-void tmds_encode_data_channel_8bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
+void __not_in_flash_func(tmds_encode_data_channel_8bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
 	interp_hw_save_t interp0_save, interp1_save;
 	interp_save(interp0_hw, &interp0_save);
 	interp_save(interp1_hw, &interp1_save);
@@ -101,7 +101,7 @@ void tmds_encode_data_channel_8bpp(const uint32_t *pixbuf, uint32_t *symbuf, siz
 // pixels, and INTERP1 for odd pixels. Note this means that even and odd
 // symbols have their DC balance handled separately, which is not to spec.
 
-static int configure_interp_for_addrgen_fullres(interp_hw_t *interp, uint channel_msb, uint channel_lsb, uint lut_index_width, const uint32_t *lutbase) {
+static int __not_in_flash_func(configure_interp_for_addrgen_fullres)(interp_hw_t *interp, uint channel_msb, uint channel_lsb, uint lut_index_width, const uint32_t *lutbase) {
 	const uint index_shift = 2; // scaled lookup for 4-byte LUT entries
 
 	int shift_channel_to_index = channel_msb - (lut_index_width - 1) - index_shift;
@@ -132,7 +132,7 @@ static int configure_interp_for_addrgen_fullres(interp_hw_t *interp, uint channe
 	return oops;
 }
 
-void tmds_encode_data_channel_fullres_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
+void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
 	uint core = get_core_num();
 	gpio_put(DEBUG_PIN0 + 1 + core, 1);
 #ifndef TMDS_FULLRES_NO_INTERP_SAVE

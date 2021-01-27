@@ -15,6 +15,11 @@
 #define DVI_N_TMDS_BUFFERS 3
 #endif
 
+// Time-critical functions pulled into RAM but each in a unique section to
+// allow garbage collection
+#define __dvi_func(f) __not_in_flash_func(f)
+#define __dvi_func_x(f) __scratch_x(__STRING(f)) f
+
 // We require exclusive use of a DMA IRQ line. (you wouldn't want to share
 // anyway). It's possible in theory to hook both IRQs and have two DVI outs.
 static struct dvi_inst *dma_irq_privdata[2];
@@ -117,7 +122,7 @@ void dvi_start(struct dvi_inst *inst) {
 	dvi_serialiser_enable(&inst->ser_cfg, true);
 }
 
-static inline void __scratch_x("dvi") _dvi_prepare_scanline_8bpp(struct dvi_inst *inst, uint32_t *scanbuf) {
+static inline void __dvi_func_x(_dvi_prepare_scanline_8bpp)(struct dvi_inst *inst, uint32_t *scanbuf) {
 	uint32_t *tmdsbuf;
 	queue_remove_blocking_u32(&inst->q_tmds_free, &tmdsbuf);
 	uint pixwidth = inst->timing->h_active_pixels;
@@ -136,7 +141,7 @@ static inline void __scratch_x("dvi") _dvi_prepare_scanline_8bpp(struct dvi_inst
 	queue_add_blocking_u32(&inst->q_tmds_valid, &tmdsbuf);
 }
 
-static inline void __scratch_x("dvi") _dvi_prepare_scanline_16bpp(struct dvi_inst *inst, uint32_t *scanbuf) {
+static inline void __dvi_func_x(_dvi_prepare_scanline_16bpp)(struct dvi_inst *inst, uint32_t *scanbuf) {
 	uint32_t *tmdsbuf;
 	queue_remove_blocking_u32(&inst->q_tmds_free, &tmdsbuf);
 	uint pixwidth = inst->timing->h_active_pixels;
@@ -155,7 +160,7 @@ static inline void __scratch_x("dvi") _dvi_prepare_scanline_16bpp(struct dvi_ins
 // "Worker threads" for TMDS encoding (core enters and never returns, but still handles IRQs)
 
 // Version where each record in q_colour_valid is one scanline:
-void dvi_scanbuf_main_8bpp(struct dvi_inst *inst) {
+void __dvi_func(dvi_scanbuf_main_8bpp)(struct dvi_inst *inst) {
 	uint y = 0;
 	while (1) {
 		uint32_t *scanbuf;
@@ -171,7 +176,7 @@ void dvi_scanbuf_main_8bpp(struct dvi_inst *inst) {
 }
 
 // Ugh copy/paste but it lets us garbage collect the TMDS stuff that is not being used from .scratch_x
-void dvi_scanbuf_main_16bpp(struct dvi_inst *inst) {
+void __dvi_func(dvi_scanbuf_main_16bpp)(struct dvi_inst *inst) {
 	uint y = 0;
 	while (1) {
 		uint32_t *scanbuf;
@@ -186,7 +191,7 @@ void dvi_scanbuf_main_16bpp(struct dvi_inst *inst) {
 	__builtin_unreachable();
 }
 
-void __scratch_x("dvi") dvi_dma_irq_handler(struct dvi_inst *inst) {
+static void __dvi_func(dvi_dma_irq_handler)(struct dvi_inst *inst) {
 	// Every fourth interrupt marks the start of the horizontal active region. We
 	// now have until the end of this region to generate DMA blocklist for next
 	// scanline.
@@ -250,7 +255,7 @@ void __scratch_x("dvi") dvi_dma_irq_handler(struct dvi_inst *inst) {
 	}
 }
 
-static void __scratch_x("dvi.irq0") dvi_dma0_irq() {
+static void __dvi_func(dvi_dma0_irq)() {
 	gpio_put(DEBUG_PIN0, 1);
 	struct dvi_inst *inst = dma_irq_privdata[0];
 	dma_hw->ints0 = 1u << inst->dma_cfg[TMDS_SYNC_LANE].chan_data;
@@ -258,7 +263,7 @@ static void __scratch_x("dvi.irq0") dvi_dma0_irq() {
 	gpio_put(DEBUG_PIN0, 0);
 }
 
-static void __scratch_x("dvi.irq1") dvi_dma1_irq() {
+static void __dvi_func(dvi_dma1_irq)() {
 	struct dvi_inst *inst = dma_irq_privdata[1];
 	dma_hw->ints1 = 1u << inst->dma_cfg[TMDS_SYNC_LANE].chan_data;
 	dvi_dma_irq_handler(inst);

@@ -4,8 +4,12 @@
 
 #include <string.h>
 
+// Pull into RAM but apply unique section suffix to allow linker GC
+#define __dvi_func(x) __not_in_flash_func(x)
+#define __dvi_const(x) __not_in_flash_func(x)
+
 // VGA -- we do this mode properly, with a pretty comfortable clk_sys (252 MHz)
-const struct dvi_timing dvi_timing_640x480p_60hz = {
+const struct dvi_timing __dvi_const(dvi_timing_640x480p_60hz) = {
 	.h_sync_polarity   = false,
 	.h_front_porch     = 16,
 	.h_sync_width      = 96,
@@ -20,7 +24,7 @@ const struct dvi_timing dvi_timing_640x480p_60hz = {
 };
 
 // SVGA -- completely by-the-book but requires 400 MHz clk_sys
-const struct dvi_timing dvi_timing_800x600p_60hz = {
+const struct dvi_timing __dvi_const(dvi_timing_800x600p_60hz) = {
 	.h_sync_polarity   = false,
 	.h_front_porch     = 44,
 	.h_sync_width      = 128,
@@ -36,7 +40,7 @@ const struct dvi_timing dvi_timing_800x600p_60hz = {
 
 // 800x480p 60 Hz (note this doesn't seem to be a CEA mode, I just used the
 // output of `cvt 800 480 60`), 295 MHz bit clock
-const struct dvi_timing dvi_timing_800x480p_60hz = {
+const struct dvi_timing __dvi_const(dvi_timing_800x480p_60hz) = {
 	.h_sync_polarity = false,
 	.h_front_porch   = 24,
 	.h_sync_width    = 72,
@@ -52,7 +56,7 @@ const struct dvi_timing dvi_timing_800x480p_60hz = {
 
 // SVGA reduced blanking (355 MHz bit clock) -- valid CVT mode, less common
 // than fully-blanked SVGA, but doesn't require such a high system clock
-const struct dvi_timing dvi_timing_800x600p_reduced_60hz = {
+const struct dvi_timing __dvi_const(dvi_timing_800x600p_reduced_60hz) = {
 	.h_sync_polarity   = true,
 	.h_front_porch     = 48,
 	.h_sync_width      = 32,
@@ -68,7 +72,7 @@ const struct dvi_timing dvi_timing_800x600p_reduced_60hz = {
 
 // Also known as qHD, bit uncommon, but it's a nice modest-resolution 16:9
 // aspect mode. Pixel clock 37.3 MHz
-const struct dvi_timing dvi_timing_960x540p_60hz = {
+const struct dvi_timing __dvi_const(dvi_timing_960x540p_60hz) = {
 	.h_sync_polarity   = true,
 	.h_front_porch     = 16,
 	.h_sync_width      = 32,
@@ -86,7 +90,7 @@ const struct dvi_timing dvi_timing_960x540p_60hz = {
 // pixel clock. Seems to be commonly accepted (and is a valid CVT mode). The
 // actual CEA mode is the same pixel clock as 720p60 but with >50% blanking,
 // which would require a clk_sys of 742 MHz!
-const struct dvi_timing dvi_timing_1280x720p_30hz = {
+const struct dvi_timing __dvi_const(dvi_timing_1280x720p_30hz) = {
 	.h_sync_polarity   = true,
 	.h_front_porch     = 110,
 	.h_sync_width      = 40,
@@ -103,7 +107,7 @@ const struct dvi_timing dvi_timing_1280x720p_30hz = {
 // Reduced-blanking (CVT) 720p. You aren't supposed to use reduced blanking
 // modes below 60 Hz, but I won't tell anyone (and it works on the monitors
 // I've tried). This nets a lower system clock than regular 720p30 (319 MHz)
-const struct dvi_timing dvi_timing_1280x720p_reduced_30hz = {
+const struct dvi_timing __dvi_const(dvi_timing_1280x720p_reduced_30hz) = {
 	.h_sync_polarity   = true,
 	.h_front_porch     = 48,
 	.h_sync_width      = 32,
@@ -119,7 +123,7 @@ const struct dvi_timing dvi_timing_1280x720p_reduced_30hz = {
 
 // This requires a spicy 488 MHz system clock and is illegal in most countries
 // (you need to have a very lucky piece of silicon to run this at 1.3 V)
-const struct dvi_timing dvi_timing_1600x900p_reduced_30hz = {
+const struct dvi_timing __dvi_const(dvi_timing_1600x900p_reduced_30hz) = {
 	.h_sync_polarity   = true,
 	.h_front_porch     = 48,
 	.h_sync_width      = 32,
@@ -133,7 +137,9 @@ const struct dvi_timing dvi_timing_1600x900p_reduced_30hz = {
 	.v_active_lines    = 720
 };
 
-const uint32_t dvi_ctrl_syms[4] = {
+// Note we particularly want these to be in memory because these addresses get
+// a LOT of DMA traffic!
+const uint32_t __dvi_const(dvi_ctrl_syms)[4] = {
 	0x5999a,
 	0xa6665,
 	0x9999a,
@@ -141,7 +147,7 @@ const uint32_t dvi_ctrl_syms[4] = {
 };
 
 // Output solid red scanline if we are given NULL for tmdsbuff
-static uint32_t __attribute__((aligned(8))) empty_scanline_tmds[6] = {
+static uint32_t __attribute__((aligned(8))) __dvi_const(empty_scanline_tmds)[6] = {
 	0x9aaaa, 0x95555, // 0x00
 	0x9aaaa, 0x95555, // 0x00
 	0x6aaa9, 0x65556  // 0xfc
@@ -152,7 +158,7 @@ void dvi_timing_state_init(struct dvi_timing_state *t) {
 	t->v_state = DVI_STATE_FRONT_PORCH;
 };
 
-void __not_in_flash("dvi") dvi_timing_state_advance(const struct dvi_timing *t, struct dvi_timing_state *s) {
+void __dvi_func(dvi_timing_state_advance)(const struct dvi_timing *t, struct dvi_timing_state *s) {
 		s->v_ctr++;
 		if ((s->v_state == DVI_STATE_FRONT_PORCH && s->v_ctr == t->v_front_porch) || 
 		    (s->v_state == DVI_STATE_SYNC && s->v_ctr == t->v_sync_width) ||
@@ -271,7 +277,7 @@ void dvi_setup_scanline_for_active(const struct dvi_timing *t, const struct dvi_
 	}
 }
 
-void __not_in_flash("dvi") dvi_update_scanline_data_dma(const struct dvi_timing *t, const uint32_t *tmdsbuf, struct dvi_scanline_dma_list *l) {
+void __dvi_func(dvi_update_scanline_data_dma)(const struct dvi_timing *t, const uint32_t *tmdsbuf, struct dvi_scanline_dma_list *l) {
 	for (int i = 0; i < N_TMDS_LANES; ++i) {
 #ifdef DVI_MONOCHROME_TMDS
 		const uint32_t *lane_tmdsbuf = tmdsbuf;

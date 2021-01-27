@@ -68,7 +68,4 @@ void dvi_scanbuf_main_16bpp(struct dvi_inst *inst);
 void dvi_framebuf_main_8bpp(struct dvi_inst *inst);
 void dvi_framebuf_main_16bpp(struct dvi_inst *inst);
 
-// Must be called on completion of the TMDS2 (blue, sync) DMA channel
-void dvi_dma_irq_handler(struct dvi_inst *inst);
-
 #endif
