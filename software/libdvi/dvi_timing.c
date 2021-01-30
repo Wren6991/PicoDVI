@@ -2,7 +2,10 @@
 #include "dvi_timing.h"
 #include "hardware/dma.h"
 
-#include <string.h>
+// This file contains:
+// - Timing parameters for DVI modes (horizontal + vertical counts, best
+//   achievable bit clock from 12 MHz crystal)
+// - Helper functions for generating DMA lists based on these timings
 
 // Pull into RAM but apply unique section suffix to allow linker GC
 #define __dvi_func(x) __not_in_flash_func(x)
@@ -20,7 +23,9 @@ const struct dvi_timing __dvi_const(dvi_timing_640x480p_60hz) = {
 	.v_front_porch     = 10,
 	.v_sync_width      = 2,
 	.v_back_porch      = 33,
-	.v_active_lines    = 480
+	.v_active_lines    = 480,
+
+	.bit_clk_khz       = 252000
 };
 
 // SVGA -- completely by-the-book but requires 400 MHz clk_sys
@@ -35,7 +40,9 @@ const struct dvi_timing __dvi_const(dvi_timing_800x600p_60hz) = {
 	.v_front_porch     = 1,
 	.v_sync_width      = 4,
 	.v_back_porch      = 23,
-	.v_active_lines    = 600
+	.v_active_lines    = 600,
+
+	.bit_clk_khz       = 400000
 };
 
 // 800x480p 60 Hz (note this doesn't seem to be a CEA mode, I just used the
@@ -51,7 +58,9 @@ const struct dvi_timing __dvi_const(dvi_timing_800x480p_60hz) = {
 	.v_front_porch   = 3,
 	.v_sync_width    = 10,
 	.v_back_porch    = 7,
-	.v_active_lines  = 480
+	.v_active_lines  = 480,
+
+	.bit_clk_khz     = 295200
 };
 
 // SVGA reduced blanking (355 MHz bit clock) -- valid CVT mode, less common
@@ -67,7 +76,9 @@ const struct dvi_timing __dvi_const(dvi_timing_800x600p_reduced_60hz) = {
 	.v_front_porch     = 3,
 	.v_sync_width      = 4,
 	.v_back_porch      = 11,
-	.v_active_lines    = 600
+	.v_active_lines    = 600,
+
+	.bit_clk_khz       = 354000
 };
 
 // Also known as qHD, bit uncommon, but it's a nice modest-resolution 16:9
@@ -83,7 +94,9 @@ const struct dvi_timing __dvi_const(dvi_timing_960x540p_60hz) = {
 	.v_front_porch     = 2,
 	.v_sync_width      = 6,
 	.v_back_porch      = 15,
-	.v_active_lines    = 540
+	.v_active_lines    = 540,
+
+	.bit_clk_khz       = 372000
 };
 
 // Note this is NOT the correct 720p30 CEA mode, but rather 720p60 run at half
@@ -101,7 +114,9 @@ const struct dvi_timing __dvi_const(dvi_timing_1280x720p_30hz) = {
 	.v_front_porch     = 5,
 	.v_sync_width      = 5,
 	.v_back_porch      = 20,
-	.v_active_lines    = 720
+	.v_active_lines    = 720,
+
+	.bit_clk_khz       = 372000
 };
 
 // Reduced-blanking (CVT) 720p. You aren't supposed to use reduced blanking
@@ -118,11 +133,14 @@ const struct dvi_timing __dvi_const(dvi_timing_1280x720p_reduced_30hz) = {
 	.v_front_porch     = 3,
 	.v_sync_width      = 5,
 	.v_back_porch      = 13,
-	.v_active_lines    = 720
+	.v_active_lines    = 720,
+
+	.bit_clk_khz       = 319200
 };
 
 // This requires a spicy 488 MHz system clock and is illegal in most countries
-// (you need to have a very lucky piece of silicon to run this at 1.3 V)
+// (you need to have a very lucky piece of silicon to run this at 1.3 V, or
+// connect an external supply and give it a bit more juice)
 const struct dvi_timing __dvi_const(dvi_timing_1600x900p_reduced_30hz) = {
 	.h_sync_polarity   = true,
 	.h_front_porch     = 48,
@@ -134,8 +152,43 @@ const struct dvi_timing __dvi_const(dvi_timing_1600x900p_reduced_30hz) = {
 	.v_front_porch     = 3,
 	.v_sync_width      = 5,
 	.v_back_porch      = 13,
-	.v_active_lines    = 720
+	.v_active_lines    = 720,
+
+	.bit_clk_khz       = 488000
 };
+
+// ----------------------------------------------------------------------------
+
+// The DMA scheme is:
+//
+// - One channel transferring data to each of the three PIO state machines
+//   performing TMDS serialisation
+//
+// - One channel programming the registers of each of these data channels,
+//   triggered (CHAIN_TO) each time the corresponding data channel completes
+//
+// - Lanes 1 and 2 have one block for blanking and one for video data
+//
+// - Lane 0 has one block for each horizontal region (front porch, hsync, back
+//   porch, active)
+//
+// - The IRQ_QUIET flag is used to select which data block on the sync lane is
+//   allowed to generate an IRQ upon completion. This is the block immediately
+//   before the horizontal active region. The IRQ is entered at ~the same time
+//   as the last data transfer starts
+//
+// - The IRQ points the control channels at new blocklists for next scanline.
+//   The DMA starts the new list automatically at end-of-scanline, via
+//   CHAIN_TO.
+//
+// The horizontal active region is the longest continuous transfer, so this
+// gives the most time to handle the IRQ and load new blocklists.
+//
+// Note a null trigger IRQ is not suitable because we get that *after* the
+// last data transfer finishes, and the FIFOs bottom out very shortly
+// afterward. For pure DVI (four blocks per scanline), it works ok to take
+// four regular IRQs per scanline and return early from 3 of them, but this
+// breaks down when you have very short scanline sections like guard bands.
 
 // Note we particularly want these to be in memory because these addresses get
 // a LOT of DMA traffic!
@@ -171,40 +224,8 @@ void __dvi_func(dvi_timing_state_advance)(const struct dvi_timing *t, struct dvi
 }
 
 void dvi_scanline_dma_list_init(struct dvi_scanline_dma_list *dma_list) {
-	// This used to be more interesting
-	memset(dma_list, 0, sizeof(struct dvi_scanline_dma_list));
+	*dma_list = (struct dvi_scanline_dma_list){};	
 }
-
-// The DMA scheme is:
-//
-// - One channel transferring data to each of the three PIO state machines
-//   performing TMDS serialisation
-//
-// - One channel programming the registers of each of these data channels,
-//   triggered (CHAIN_TO) each time the corresponding data channel completes
-//
-// - Lanes 1 and 2 have one block for blanking and one for video data
-//
-// - Lane 0 has one block for each horizontal region (front porch, hsync, back
-//   porch, active)
-//
-// - The IRQ_QUIET flag is used to select which data block on the sync lane is
-//   allowed to generate an IRQ upon completion. This is the block immediately
-//   before the horizontal active region. The IRQ is entered at ~the same time
-//   as the last data transfer starts
-//
-// - The IRQ points the control channels at new blocklists for next scanline.
-//   The DMA starts the new list automatically at end-of-scanline, via
-//   CHAIN_TO.
-//
-// The horizontal active region is the longest continuous transfer, so this
-// gives the most time to handle the IRQ and load new blocklists.
-//
-// Note a null trigger IRQ is not suitable because we get that *after* the
-// last data transfer finishes, and the FIFOs bottom out very shortly
-// afterward. For pure DVI (four blocks per scanline), it works ok to take
-// four regular IRQs per scanline and return early from 3 of them, but this
-// breaks down when you have very short scanline sections like guard bands.
 
 static const uint32_t *get_ctrl_sym(bool vsync, bool hsync) {
 	return &dvi_ctrl_syms[!!vsync << 1 | !!hsync];

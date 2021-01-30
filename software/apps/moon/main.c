@@ -22,7 +22,6 @@
 // DVDD 1.2V (1.1V seems ok too)
 #define FRAME_WIDTH 640
 #define FRAME_HEIGHT 480
-#define BIT_CLOCK_MHZ 252
 #define VREG_VSEL VREG_VOLTAGE_1_20
 #define DVI_TIMING dvi_timing_640x480p_60hz
 #include "moon_1bpp_640x480.h"
@@ -31,7 +30,6 @@
 #elif defined(MODE_1280x720_30Hz)
 #define FRAME_WIDTH 1280
 #define FRAME_HEIGHT 720
-#define BIT_CLOCK_MHZ 372
 #define VREG_VSEL VREG_VOLTAGE_1_25
 #define DVI_TIMING dvi_timing_1280x720p_30hz
 #include "moon_1bpp_1280x720.h"
@@ -46,7 +44,7 @@ struct dvi_inst dvi0;
 int main() {
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(10);
-	set_sys_clock_khz(BIT_CLOCK_MHZ * 1000, true);
+	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, true);
 	setup_default_uart();
 
 	dvi0.timing = &DVI_TIMING;
@@ -55,6 +53,8 @@ int main() {
 	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
 
 	// Set up extra SM, and DMA channels, to offload TMDS encode if necessary
+	// (note there are two build targets for this app, called `moon` and
+	// `moon_pio_encode`, so a simple `make all` will get you both binaries)
 #ifdef USE_PIO_TMDS_ENCODE
 	PIO encode_pio = dvi0.ser_cfg.pio;
 	uint encode_sm = pio_claim_unused_sm(encode_pio, true);

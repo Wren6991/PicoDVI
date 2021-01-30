@@ -20,7 +20,6 @@
 // DVDD 1.25V (slower silicon may need the full 1.3, or just not work)
 #define FRAME_WIDTH 1280
 #define FRAME_HEIGHT 720
-#define BIT_CLOCK_MHZ 372
 #define VREG_VSEL VREG_VOLTAGE_1_25
 #define DVI_TIMING dvi_timing_1280x720p_30hz
 
@@ -30,7 +29,7 @@ int main() {
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(10);
 	// Run system at TMDS bit clock
-	set_sys_clock_khz(BIT_CLOCK_MHZ * 1000, true);
+	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, true);
 
 	setup_default_uart();
 

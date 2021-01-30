@@ -34,7 +34,6 @@
 // DVDD 1.2V (1.1V seems ok too)
 #define FRAME_WIDTH 640
 #define FRAME_HEIGHT 480
-#define BIT_CLOCK_MHZ 252
 #define VREG_VSEL VREG_VOLTAGE_1_20
 #define DVI_TIMING dvi_timing_640x480p_60hz
 
@@ -42,7 +41,6 @@
 // DVDD 1.3V, going downhill with a tailwind
 #define FRAME_WIDTH 800
 #define FRAME_HEIGHT 600
-#define BIT_CLOCK_MHZ 400
 #define VREG_VSEL VREG_VOLTAGE_1_30
 #define DVI_TIMING dvi_timing_800x600p_60hz
 
@@ -51,7 +49,6 @@
 // DVDD 1.25V (slower silicon may need the full 1.3, or just not work)
 #define FRAME_WIDTH 960
 #define FRAME_HEIGHT 540
-#define BIT_CLOCK_MHZ 372
 #define VREG_VSEL VREG_VOLTAGE_1_25
 #define DVI_TIMING dvi_timing_960x540p_60hz
 
@@ -60,7 +57,6 @@
 // DVDD 1.25V (slower silicon may need the full 1.3, or just not work)
 #define FRAME_WIDTH 1280
 #define FRAME_HEIGHT 720
-#define BIT_CLOCK_MHZ 372
 #define VREG_VSEL VREG_VOLTAGE_1_25
 #define DVI_TIMING dvi_timing_1280x720p_30hz
 
@@ -115,7 +111,7 @@ int __not_in_flash("main") main() {
 	set_sys_clock_khz(12000, true);
 #else
 	// Run system at TMDS bit clock
-	set_sys_clock_khz(BIT_CLOCK_MHZ * 1000, true);
+	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, true);
 #endif
 
 	setup_default_uart();

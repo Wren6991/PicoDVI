@@ -18,6 +18,8 @@ struct dvi_timing {
 	uint v_sync_width;
 	uint v_back_porch;
 	uint v_active_lines;
+
+	uint bit_clk_khz;
 };
 
 enum dvi_line_state {
