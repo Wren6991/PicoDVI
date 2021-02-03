@@ -33,11 +33,6 @@ int main() {
 
 	setup_default_uart();
 
-	for (int i = DEBUG_PIN0; i < DEBUG_PIN0 + DEBUG_N_PINS; ++i) {
-		gpio_init(i);
-		gpio_set_dir(i, GPIO_OUT);
-	}
-
 	dvi0.timing = &DVI_TIMING;
 	dvi0.ser_cfg = DEFAULT_DVI_SERIAL_CONFIG;
 	dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());

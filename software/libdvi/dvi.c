@@ -256,11 +256,9 @@ static void __dvi_func(dvi_dma_irq_handler)(struct dvi_inst *inst) {
 }
 
 static void __dvi_func(dvi_dma0_irq)() {
-	gpio_put(DEBUG_PIN0, 1);
 	struct dvi_inst *inst = dma_irq_privdata[0];
 	dma_hw->ints0 = 1u << inst->dma_cfg[TMDS_SYNC_LANE].chan_data;
 	dvi_dma_irq_handler(inst);
-	gpio_put(DEBUG_PIN0, 0);
 }
 
 static void __dvi_func(dvi_dma1_irq)() {

@@ -55,13 +55,7 @@ int main() {
 	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, true);
 #endif
 
-
 	setup_default_uart();
-
-	for (int i = DEBUG_PIN0; i < DEBUG_PIN0 + DEBUG_N_PINS; ++i) {
-		gpio_init(i);
-		gpio_set_dir(i, GPIO_OUT);
-	}
 
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);

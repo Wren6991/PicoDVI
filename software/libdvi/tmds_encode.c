@@ -62,7 +62,6 @@ static int __not_in_flash_func(configure_interp_for_addrgen)(interp_hw_t *interp
 
 void __not_in_flash_func(tmds_encode_data_channel_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
 	interp_hw_save_t interp0_save;
-	gpio_put(DEBUG_PIN0 + 1, 1);
 	interp_save(interp0_hw, &interp0_save);
 	int require_lshift = configure_interp_for_addrgen(interp0_hw, channel_msb, channel_lsb, 0, 16, 6, tmds_table);
 	if (require_lshift)
@@ -70,7 +69,6 @@ void __not_in_flash_func(tmds_encode_data_channel_16bpp)(const uint32_t *pixbuf,
 	else
 		tmds_encode_loop_16bpp(pixbuf, symbuf, n_pix);
 	interp_restore(interp0_hw, &interp0_save);
-	gpio_put(DEBUG_PIN0 + 1, 0);
 }
 
 // As above, but 8 bits per pixel, multiple of 4 pixels, and still word-aligned.
@@ -134,7 +132,6 @@ static int __not_in_flash_func(configure_interp_for_addrgen_fullres)(interp_hw_t
 
 void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
 	uint core = get_core_num();
-	gpio_put(DEBUG_PIN0 + 1 + core, 1);
 #ifndef TMDS_FULLRES_NO_INTERP_SAVE
 	interp_hw_save_t interp0_save, interp1_save;
 	interp_save(interp0_hw, &interp0_save);
@@ -164,5 +161,4 @@ void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t 
 	interp_restore(interp0_hw, &interp0_save);
 	interp_restore(interp1_hw, &interp1_save);
 #endif
-	gpio_put(DEBUG_PIN0 + 1 + core, 0);
 }

@@ -156,11 +156,6 @@ int main() {
 
 	setup_default_uart();
 
-	for (int i = DEBUG_PIN0; i < DEBUG_PIN0 + DEBUG_N_PINS; ++i) {
-		gpio_init(i);
-		gpio_set_dir(i, GPIO_OUT);
-	}
-
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
