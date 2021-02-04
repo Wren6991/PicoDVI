@@ -30,7 +30,12 @@ class BinHeader:
 			arrayname = filename.split(".")[0]
 		self.f = open(filename, "w")
 		self.out_count = 0
-		self.f.write("static char __attribute__((aligned(4))) {}[] = {{\n\t".format(arrayname))
+		self.f.write(
+			"#ifndef _IMG_ASSET_SECTION\n" \
+			"#define _IMG_ASSET_SECTION \".data\"\n" \
+			"#endif\n\n" \
+			f"static const char __attribute__((aligned(4), section(_IMG_ASSET_SECTION \".{arrayname}\"))) {arrayname}[] = {{\n\t"
+		)
 
 	def write(self, bs):
 		for b in bs:
