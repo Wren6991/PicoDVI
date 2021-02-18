@@ -22,7 +22,6 @@ include_directories(
 	)
 
 add_subdirectory(libdvi)
-add_subdirectory(libhyperram)
 add_subdirectory(libsprite)
 
 add_subdirectory(apps)
