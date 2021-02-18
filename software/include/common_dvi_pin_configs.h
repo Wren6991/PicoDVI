@@ -56,6 +56,13 @@ static const struct dvi_serialiser_cfg micromod_cfg = {
 	.invert_diffpairs = true
 };
 
-
+// Pico DVI Sock (small hat on the bottom) which solders to the end of a Pico
+static const struct dvi_serialiser_cfg pico_sock_cfg = {
+	.pio = pio0,
+	.sm_tmds = {0, 1, 2},
+	.pins_tmds = {12, 18, 16},
+	.pins_clk = 14,
+	.invert_diffpairs = false
+};
 
 #endif
