@@ -151,8 +151,8 @@ const struct dvi_timing __dvi_const(dvi_timing_1600x900p_reduced_30hz) = {
 	.v_sync_polarity   = false,
 	.v_front_porch     = 3,
 	.v_sync_width      = 5,
-	.v_back_porch      = 13,
-	.v_active_lines    = 720,
+	.v_back_porch      = 18,
+	.v_active_lines    = 900,
 
 	.bit_clk_khz       = 488000
 };
