@@ -6,6 +6,7 @@
 
 #include "pico/util/queue.h"
 
+#include "dvi_config_defs.h"
 #include "dvi_timing.h"
 #include "dvi_serialiser.h"
 #include "util_queue_u32_inline.h"

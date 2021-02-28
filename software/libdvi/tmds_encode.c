@@ -132,7 +132,7 @@ static int __not_in_flash_func(configure_interp_for_addrgen_fullres)(interp_hw_t
 
 void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
 	uint core = get_core_num();
-#ifndef TMDS_FULLRES_NO_INTERP_SAVE
+#if !TMDS_FULLRES_NO_INTERP_SAVE
 	interp_hw_save_t interp0_save, interp1_save;
 	interp_save(interp0_hw, &interp0_save);
 	interp_save(interp1_hw, &interp1_save);
@@ -157,7 +157,7 @@ void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t 
 			tmds_fullres_encode_loop_16bpp_y
 		)(pixbuf, symbuf, n_pix);
 	}
-#ifndef TMDS_FULLRES_NO_INTERP_SAVE
+#if !TMDS_FULLRES_NO_INTERP_SAVE
 	interp_restore(interp0_hw, &interp0_save);
 	interp_restore(interp1_hw, &interp1_save);
 #endif

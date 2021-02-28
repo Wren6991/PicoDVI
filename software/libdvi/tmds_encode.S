@@ -1,9 +1,6 @@
 #include "hardware/regs/addressmap.h"
 #include "hardware/regs/sio.h"
-
-#ifndef TMDS_ENCODE_UNROLL
-#define TMDS_ENCODE_UNROLL 1
-#endif
+#include "dvi_config_defs.h"
 
 // Offsets suitable for ldr/str (must be <= 0x7c):
 #define ACCUM0_OFFS     (SIO_INTERP0_ACCUM0_OFFSET     - SIO_INTERP0_ACCUM0_OFFSET)
@@ -340,12 +337,12 @@ tmds_1bpp_table:
 	str r4, [r2, #ACCUM0_OFFS]
 	ldr r4, [r2, #PEEK2_OFFS]
 	ldr r4, [r4]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r4, [r2, #ACCUM1_ADD_OFFS]
 #endif
 	ldr r5, [r2, #PEEK2_OFFS + INTERP1]
 	ldr r5, [r5]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r5, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
 
@@ -353,12 +350,12 @@ tmds_1bpp_table:
 	str r6, [r2, #ACCUM0_OFFS]
 	ldr r6, [r2, #PEEK2_OFFS]
 	ldr r6, [r6]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r6, [r2, #ACCUM1_ADD_OFFS]
 #endif
 	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
 	ldr r7, [r7]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
 
@@ -366,7 +363,7 @@ tmds_1bpp_table:
 .endr
 	// Need to mask away bottoms of ACCUM1 before the TMDS data overflows into
 	// disparity counter. This costs 8 cycles per loop body.
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	ldr r4, [r2, #ACCUM1_OFFS]
 	ands r4, r3
 	str r4, [r2, #ACCUM1_OFFS]
@@ -431,12 +428,12 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	str r4, [r2, #ACCUM0_OFFS]
 	ldr r4, [r2, #PEEK2_OFFS]
 	ldr r4, [r4]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r4, [r2, #ACCUM1_ADD_OFFS]
 #endif
 	ldr r5, [r2, #PEEK2_OFFS + INTERP1]
 	ldr r5, [r5]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r5, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
 
@@ -445,12 +442,12 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	str r6, [r2, #ACCUM0_OFFS]
 	ldr r6, [r2, #PEEK2_OFFS]
 	ldr r6, [r6]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r6, [r2, #ACCUM1_ADD_OFFS]
 #endif
 	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
 	ldr r7, [r7]
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
 
@@ -458,7 +455,7 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 .endr
 	// Need to mask away bottoms of ACCUM1 before the TMDS data overflows into
 	// disparity counter
-#ifndef TMDS_FULLRES_NO_DC_BALANCE
+#if !TMDS_FULLRES_NO_DC_BALANCE
 	mov r5, r9
 	ldr r4, [r2, #ACCUM1_OFFS]
 	ands r4, r5

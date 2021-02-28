@@ -300,7 +300,7 @@ void dvi_setup_scanline_for_active(const struct dvi_timing *t, const struct dvi_
 
 void __dvi_func(dvi_update_scanline_data_dma)(const struct dvi_timing *t, const uint32_t *tmdsbuf, struct dvi_scanline_dma_list *l) {
 	for (int i = 0; i < N_TMDS_LANES; ++i) {
-#ifdef DVI_MONOCHROME_TMDS
+#if DVI_MONOCHROME_TMDS
 		const uint32_t *lane_tmdsbuf = tmdsbuf;
 #else
 		const uint32_t *lane_tmdsbuf = tmdsbuf + i * t->h_active_pixels;

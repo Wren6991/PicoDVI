@@ -7,12 +7,6 @@
 #include "dvi_serialiser.h"
 #include "dvi_serialiser.pio.h"
 
-// Define to replace TMDS serialiser with a 1 start bit, 1 stop bit, 10 data
-// bit UART with same baud rate (but lower data throughput):
-#ifndef DVI_SERIAL_DEBUG
-#define DVI_SERIAL_DEBUG 0
-#endif
-
 static void dvi_init_gpio(uint gpio, bool invert) {
 	// 2 mA drive, enable slew rate limiting (this seems fine even at 720p30, and
 	// the 3V3 LDO doesn't get warm like when turning all the GPIOs up to 11).

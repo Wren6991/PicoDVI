@@ -7,14 +7,6 @@
 #include "dvi_serialiser.h"
 #include "tmds_encode.h"
 
-#ifndef DVI_VERTICAL_REPEAT
-#define DVI_VERTICAL_REPEAT 2
-#endif
-
-#ifndef DVI_N_TMDS_BUFFERS
-#define DVI_N_TMDS_BUFFERS 3
-#endif
-
 // Time-critical functions pulled into RAM but each in a unique section to
 // allow garbage collection
 #define __dvi_func(f) __not_in_flash_func(f)
@@ -50,7 +42,7 @@ void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_col
 
 	for (int i = 0; i < DVI_N_TMDS_BUFFERS; ++i) {
 		void *tmdsbuf;
-#ifdef DVI_MONOCHROME_TMDS
+#if DVI_MONOCHROME_TMDS
 		tmdsbuf = malloc(inst->timing->h_active_pixels * sizeof(uint32_t));
 #else
 		tmdsbuf = malloc(3 * inst->timing->h_active_pixels * sizeof(uint32_t));

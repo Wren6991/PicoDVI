@@ -2,6 +2,7 @@
 #define _DVI_SERIALISER_H
 
 #include "hardware/pio.h"
+#include "dvi_config_defs.h"
 
 #define N_TMDS_LANES 3
 

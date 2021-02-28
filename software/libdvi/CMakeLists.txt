@@ -6,6 +6,7 @@ add_library(libdvi INTERFACE)
 target_sources(libdvi INTERFACE
 	${CMAKE_CURRENT_LIST_DIR}/dvi.c
 	${CMAKE_CURRENT_LIST_DIR}/dvi.h
+	${CMAKE_CURRENT_LIST_DIR}/dvi_config_defs.h
 	${CMAKE_CURRENT_LIST_DIR}/dvi_serialiser.c
 	${CMAKE_CURRENT_LIST_DIR}/dvi_serialiser.h
 	${CMAKE_CURRENT_LIST_DIR}/dvi_timing.c
