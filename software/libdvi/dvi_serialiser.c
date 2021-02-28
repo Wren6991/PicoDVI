@@ -46,16 +46,16 @@ void dvi_serialiser_init(struct dvi_serialiser_cfg *cfg) {
 	assert(cfg->pins_clk % 2 == 0);
 	uint slice = pwm_gpio_to_slice_num(cfg->pins_clk);
 	// 5 cycles high, 5 low. Invert one channel so that we get complementary outputs.
-	const uint pwm_wrap = 10 - 1;
-	const uint pwm_level = pwm_wrap / 2;
 	pwm_config pwm_cfg = pwm_get_default_config();
 	pwm_config_set_output_polarity(&pwm_cfg, true, false);
-	pwm_config_set_wrap(&pwm_cfg, pwm_wrap);
+	pwm_config_set_wrap(&pwm_cfg, 9);
 	pwm_init(slice, &pwm_cfg, false);
-	pwm_set_both_levels(slice, pwm_level, pwm_level);
+	pwm_set_both_levels(slice, 5, 5);
 
-	dvi_configure_pad(cfg->pins_clk, cfg->invert_diffpairs);
-	dvi_configure_pad(cfg->pins_clk + 1, cfg->invert_diffpairs);
+	for (uint i = cfg->pins_clk; i <= cfg->pins_clk + 1; ++i) {
+		gpio_set_function(i, GPIO_FUNC_PWM);
+		dvi_configure_pad(i, cfg->invert_diffpairs);
+	}
 }
 
 void dvi_serialiser_enable(struct dvi_serialiser_cfg *cfg, bool enable) {

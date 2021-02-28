@@ -27,7 +27,7 @@ uint32_t __scratch_y("tmds_table_fullres") tmds_table_fullres_y[] = {
 
 static int __not_in_flash_func(configure_interp_for_addrgen)(interp_hw_t *interp, uint channel_msb, uint channel_lsb, uint pixel_lsb, uint pixel_width, uint lut_index_width, const uint32_t *lutbase) {
 	interp_config c;
-	const uint index_shift = 3; // scaled lookup for 8-byte LUT entries
+	const uint index_shift = 2; // scaled lookup for 4-byte LUT entries
 
 	int shift_channel_to_index = pixel_lsb + channel_msb - (lut_index_width - 1) - index_shift;
 	int oops = 0;
