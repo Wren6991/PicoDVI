@@ -300,7 +300,7 @@ void dvi_setup_scanline_for_active(const struct dvi_timing *t, const struct dvi_
 		else {
 			// 8-byte read ring mode to repeat the correct DC-balanced symbol pair on blank scanlines
 			_set_data_cb(&cblist[target_block], &dma_cfg[i], &empty_scanline_tmds[2 * i / DVI_SYMBOLS_PER_WORD],
-				t->h_active_pixels / DVI_SYMBOLS_PER_WORD, DVI_SYMBOLS_PER_WORD == 2 ? 3 : 2, false);
+				t->h_active_pixels / DVI_SYMBOLS_PER_WORD, DVI_SYMBOLS_PER_WORD == 2 ? 2 : 3, false);
 		}
 	}
 }
