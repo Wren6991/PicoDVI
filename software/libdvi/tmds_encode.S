@@ -44,7 +44,7 @@
 
 decl_func tmds_encode_loop_16bpp
 	push {r4, r5, r6, r7, lr}
-	lsls r2, #3
+	lsls r2, #2
 	add r2, r1
 	mov ip, r2
 	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
@@ -55,10 +55,12 @@ decl_func tmds_encode_loop_16bpp
 	ldmia r0!, {r4}
 	str r4, [r2, #ACCUM0_OFFS]
 	ldr r4, [r2, #PEEK0_OFFS]
-	ldmia r4, {r4, r5}
+	ldr r4, [r4]
 	ldr r6, [r2, #PEEK1_OFFS]
-	ldmia r6, {r6, r7}
-	stmia r1!, {r4, r5, r6, r7}
+	ldr r6, [r6]
+	// TODO our pixels are now 2 per word instead of 1 per word, so this store is
+	// now 2 words instead of 4; reexpand it.
+	stmia r1!, {r4, r6}
 .endr
 2:
 	cmp r1, ip
@@ -75,7 +77,7 @@ decl_func tmds_encode_loop_16bpp
 
 decl_func tmds_encode_loop_16bpp_leftshift
 	push {r4, r5, r6, r7, lr}
-	lsls r2, #3
+	lsls r2, #2
 	add r2, r1
 	mov ip, r2
 	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
@@ -87,10 +89,10 @@ decl_func tmds_encode_loop_16bpp_leftshift
 	lsls r4, r3
 	str r4, [r2, #ACCUM0_OFFS]
 	ldr r4, [r2, #PEEK0_OFFS]
-	ldmia r4, {r4, r5}
+	ldr r4, [r4]
 	ldr r6, [r2, #PEEK1_OFFS]
-	ldmia r6, {r6, r7}
-	stmia r1!, {r4, r5, r6, r7}
+	ldr r6, [r6]
+	stmia r1!, {r4, r6}
 .endr
 2:
 	cmp r1, ip
@@ -103,7 +105,7 @@ decl_func tmds_encode_loop_16bpp_leftshift
 
 decl_func tmds_encode_loop_8bpp
 	push {r4, r5, r6, r7, lr}
-	lsls r2, #3
+	lsls r2, #2
 	add r2, r1
 	mov ip, r2
 	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
@@ -112,17 +114,16 @@ decl_func tmds_encode_loop_8bpp
 1:
 .rept TMDS_ENCODE_UNROLL
 	ldmia  r0!, {r4}
-	str r4, [r2, #ACCUM0_OFFS]
 	str r4, [r2, #ACCUM0_OFFS + INTERP1]
+	str r4, [r2, #ACCUM0_OFFS]
 	ldr r4, [r2, #PEEK0_OFFS]
-	ldmia r4, {r4, r5}
-	ldr r6, [r2, #PEEK1_OFFS]
-	ldmia r6, {r6, r7}
-	stmia r1!, {r4, r5, r6, r7}
-	ldr r4, [r2, #PEEK0_OFFS + INTERP1]
-	ldmia r4, {r4, r5}
-	ldr r6, [r2, #PEEK1_OFFS + INTERP1]
-	ldmia r6, {r6, r7}
+	ldr r4, [r4]
+	ldr r5, [r2, #PEEK1_OFFS]
+	ldr r5, [r5]
+	ldr r6, [r2, #PEEK0_OFFS + INTERP1]
+	ldr r6, [r6]
+	ldr r7, [r2, #PEEK1_OFFS + INTERP1]
+	ldr r7, [r7]
 	stmia r1!, {r4, r5, r6, r7}
 .endr
 2:
@@ -155,14 +156,13 @@ decl_func tmds_encode_loop_8bpp_leftshift
 	lsls r4, r3
 	str r4, [r2, #ACCUM0_OFFS]
 	ldr r4, [r2, #PEEK0_OFFS]
-	ldmia r4, {r4, r5}
-	ldr r6, [r2, #PEEK1_OFFS]
-	ldmia r6, {r6, r7}
-	stmia r1!, {r4, r5, r6, r7}
-	ldr r4, [r2, #PEEK0_OFFS + INTERP1]
-	ldmia r4, {r4, r5}
-	ldr r6, [r2, #PEEK1_OFFS + INTERP1]
-	ldmia r6, {r6, r7}
+	ldr r4, [r4]
+	ldr r5, [r2, #PEEK1_OFFS]
+	ldr r5, [r5]
+	ldr r6, [r2, #PEEK0_OFFS + INTERP1]
+	ldr r6, [r6]
+	ldr r7, [r2, #PEEK1_OFFS + INTERP1]
+	ldr r7, [r7]
 	stmia r1!, {r4, r5, r6, r7}
 .endr
 2:

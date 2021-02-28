@@ -81,20 +81,34 @@ def differentialise(x, n):
 enc = TMDSEncode()
 
 
-def disptable_format(sym):
-	return differentialise(sym, 10) | ((popcount(sym) * 2 - 10 & 0x3f) << 26)
+###
+# Pixel-doubled table:
 
-print("// Non-negative running disparity:")
-for i in range(0, 256, 4):
-	enc.imbalance = 1
-	print("0x{:08x},".format(disptable_format(enc.encode(i, 0, 1))))
+# for i in range(0, 256, 4):
+# 	sym0 = enc.encode(i, 0, 1)
+# 	sym1 = enc.encode(i ^ 1, 0, 1)
+# 	print(f"0x{sym0 | (sym1 << 10)}u,")
 
-print("// Negative running disparity:")
-for i in range(0, 256, 4):
-	enc.imbalance = -1
-	print("0x{:08x},".format(disptable_format(enc.encode(i, 0, 1))))
+###
+# Fullres table stuff:
 
+# def disptable_format(sym):
+# 	return differentialise(sym, 10) | ((popcount(sym) * 2 - 10 & 0x3f) << 26)
 
-# for i in range(4):
-# 	print("0x{:05x},".format(differentialise(enc.encode(0, i, 0), 10)))
+# print("// Non-negative running disparity:")
+# for i in range(0, 256, 4):
+# 	enc.imbalance = 1
+# 	print("0x{:08x},".format(disptable_format(enc.encode(i, 0, 1))))
+
+# print("// Negative running disparity:")
+# for i in range(0, 256, 4):
+# 	enc.imbalance = -1
+# 	print("0x{:08x},".format(disptable_format(enc.encode(i, 0, 1))))
+
+###
+# Control symbols:
+
+for i in range(4):
+	sym = enc.encode(0, i, 0)
+	print(f"0x{sym << 10 | sym:05x},")
 

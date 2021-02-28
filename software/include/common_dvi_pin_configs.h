@@ -8,7 +8,7 @@
 #include "dvi_serialiser.h"
 
 #ifndef DEFAULT_DVI_SERIAL_CONFIG
-#define DEFAULT_DVI_SERIAL_CONFIG picodvi_dvi_cfg
+#define DEFAULT_DVI_SERIAL_CONFIG pico_sock_cfg
 #endif
 
 // ----------------------------------------------------------------------------

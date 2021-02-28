@@ -26,6 +26,7 @@ target_link_libraries(libdvi INTERFACE
 	hardware_dma
 	hardware_interp
 	hardware_pio
+	hardware_pwm
 	)
 
 pico_generate_pio_header(libdvi ${CMAKE_CURRENT_LIST_DIR}/dvi_serialiser.pio)

@@ -13,7 +13,6 @@ struct dvi_serialiser_cfg {
 	uint pins_clk;
 	bool invert_diffpairs;
 	uint prog_offs;
-	uint prog_offs_clk;
 };
 
 void dvi_serialiser_init(struct dvi_serialiser_cfg *cfg);

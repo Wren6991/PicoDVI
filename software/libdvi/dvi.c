@@ -43,9 +43,9 @@ void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_col
 	for (int i = 0; i < DVI_N_TMDS_BUFFERS; ++i) {
 		void *tmdsbuf;
 #if DVI_MONOCHROME_TMDS
-		tmdsbuf = malloc(inst->timing->h_active_pixels * sizeof(uint32_t));
+		tmdsbuf = malloc(inst->timing->h_active_pixels / DVI_SYMBOLS_PER_WORD * sizeof(uint32_t));
 #else
-		tmdsbuf = malloc(3 * inst->timing->h_active_pixels * sizeof(uint32_t));
+		tmdsbuf = malloc(3 * inst->timing->h_active_pixels / DVI_SYMBOLS_PER_WORD * sizeof(uint32_t));
 #endif
 		if (!tmdsbuf)
 			panic("TMDS buffer allocation failed");
@@ -118,6 +118,7 @@ static inline void __dvi_func_x(_dvi_prepare_scanline_8bpp)(struct dvi_inst *ins
 	uint32_t *tmdsbuf;
 	queue_remove_blocking_u32(&inst->q_tmds_free, &tmdsbuf);
 	uint pixwidth = inst->timing->h_active_pixels;
+	uint words_per_channel = pixwidth / DVI_SYMBOLS_PER_WORD;
 	// TODO maybe want to make this configurable one day
 	// anyhoo we are abutting the buffers in TMDS channel order
 	const uint red_msb   = 7;
@@ -126,10 +127,10 @@ static inline void __dvi_func_x(_dvi_prepare_scanline_8bpp)(struct dvi_inst *ins
 	const uint green_lsb = 2;
 	const uint blue_msb  = 1;
 	const uint blue_lsb  = 0;
-	// NB the scanline buffers are half-resolution!
-	tmds_encode_data_channel_8bpp(scanbuf, tmdsbuf, pixwidth / 2, blue_msb, blue_lsb);
-	tmds_encode_data_channel_8bpp(scanbuf, tmdsbuf + pixwidth, pixwidth / 2, green_msb, green_lsb);
-	tmds_encode_data_channel_8bpp(scanbuf, tmdsbuf + 2 * pixwidth, pixwidth / 2, red_msb, red_lsb);
+	// Scanline buffers are half-resolution; the functions take the number of *input* pixels as parameter.
+	tmds_encode_data_channel_8bpp(scanbuf, tmdsbuf + 0 * words_per_channel, pixwidth / 2, blue_msb, blue_lsb);
+	tmds_encode_data_channel_8bpp(scanbuf, tmdsbuf + 1 * words_per_channel, pixwidth / 2, green_msb, green_lsb);
+	tmds_encode_data_channel_8bpp(scanbuf, tmdsbuf + 2 * words_per_channel, pixwidth / 2, red_msb, red_lsb);
 	queue_add_blocking_u32(&inst->q_tmds_valid, &tmdsbuf);
 }
 
@@ -137,15 +138,16 @@ static inline void __dvi_func_x(_dvi_prepare_scanline_16bpp)(struct dvi_inst *in
 	uint32_t *tmdsbuf;
 	queue_remove_blocking_u32(&inst->q_tmds_free, &tmdsbuf);
 	uint pixwidth = inst->timing->h_active_pixels;
+	uint words_per_channel = pixwidth / DVI_SYMBOLS_PER_WORD;
 	const uint red_msb   = 15;
 	const uint red_lsb   = 11;
 	const uint green_msb = 10;
 	const uint green_lsb = 5;
 	const uint blue_msb  = 4;
 	const uint blue_lsb  = 0;
-	tmds_encode_data_channel_16bpp(scanbuf, tmdsbuf, pixwidth / 2, blue_msb, blue_lsb);
-	tmds_encode_data_channel_16bpp(scanbuf, tmdsbuf + pixwidth, pixwidth / 2, green_msb, green_lsb);
-	tmds_encode_data_channel_16bpp(scanbuf, tmdsbuf + 2 * pixwidth, pixwidth / 2, red_msb, red_lsb);
+	tmds_encode_data_channel_16bpp(scanbuf, tmdsbuf + 0 * words_per_channel, pixwidth / 2, blue_msb, blue_lsb);
+	tmds_encode_data_channel_16bpp(scanbuf, tmdsbuf + 1 * words_per_channel, pixwidth / 2, green_msb, green_lsb);
+	tmds_encode_data_channel_16bpp(scanbuf, tmdsbuf + 2 * words_per_channel, pixwidth / 2, red_msb, red_lsb);
 	queue_add_blocking_u32(&inst->q_tmds_valid, &tmdsbuf);
 }
 

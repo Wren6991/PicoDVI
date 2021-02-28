@@ -7,7 +7,7 @@
 // target_compile_definitions())
 
 // Pull in base headers to make sure board definitions override the
-// definitions provided here.
+// definitions provided here. Note this file is included in asm and C.
 #include "hardware/platform_defs.h"
 #include "pico/config.h"
 
@@ -40,6 +40,20 @@
 #define DVI_MONOCHROME_TMDS 0
 #endif
 
+// By default, we assume each 32-bit word written to a PIO FIFO contains 2x
+// 10-bit TMDS symbols, concatenated into the lower 20 bits, least-significant
+// first. This is convenient if you are generating two or more pixels at once,
+// e.g. using the pixel-doubling TMDS encode. You can change this value to 1
+// (so each word contains 1 symbol) for e.g. full resolution RGB encode. Note
+// that this value needs to divide the DVI horizontal timings, so is limited
+// to 1 or 2.
+#ifndef DVI_SYMBOLS_PER_WORD
+#define DVI_SYMBOLS_PER_WORD 2
+#endif
+
+#if DVI_SYMBOLS_PER_WORD != 1 && DVI_SYMBOLS_PER_WORD !=2
+#error "Unsupported value for DVI_SYMBOLS_PER_WORD"
+#endif
 
 // ----------------------------------------------------------------------------
 // TMDS encode controls
