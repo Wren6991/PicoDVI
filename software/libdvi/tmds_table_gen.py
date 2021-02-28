@@ -84,10 +84,11 @@ enc = TMDSEncode()
 ###
 # Pixel-doubled table:
 
-# for i in range(0, 256, 4):
-# 	sym0 = enc.encode(i, 0, 1)
-# 	sym1 = enc.encode(i ^ 1, 0, 1)
-# 	print(f"0x{sym0 | (sym1 << 10)}u,")
+for i in range(0, 256, 4):
+	sym0 = enc.encode(i, 0, 1)
+	sym1 = enc.encode(i ^ 1, 0, 1)
+	assert(enc.imbalance == 0)
+	print(f"0x{sym0 | (sym1 << 10):05x}u,")
 
 ###
 # Fullres table stuff:
@@ -108,7 +109,7 @@ enc = TMDSEncode()
 ###
 # Control symbols:
 
-for i in range(4):
-	sym = enc.encode(0, i, 0)
-	print(f"0x{sym << 10 | sym:05x},")
+# for i in range(4):
+# 	sym = enc.encode(0, i, 0)
+# 	print(f"0x{sym << 10 | sym:05x},")
 

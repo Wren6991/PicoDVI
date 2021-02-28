@@ -202,9 +202,9 @@ const uint32_t __dvi_const(dvi_ctrl_syms)[4] = {
 // Output solid red scanline if we are given NULL for tmdsbuff
 #if DVI_SYMBOLS_PER_WORD == 2
 static uint32_t __attribute__((aligned(8))) __dvi_const(empty_scanline_tmds)[3] = {
-	0x523520u, // 0x00
-	0x523520u, // 0x00
-	0x784897u  // 0xfc
+	0x7fd00u, // 0x00
+	0x7fd00u, // 0x00
+	0xbfa01u  // 0xfc
 };
 #else
 #error "Can't handle empty scanlines with pixel-per-word right now"
