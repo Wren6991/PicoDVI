@@ -84,11 +84,24 @@ enc = TMDSEncode()
 ###
 # Pixel-doubled table:
 
-for i in range(0, 256, 4):
-	sym0 = enc.encode(i, 0, 1)
-	sym1 = enc.encode(i ^ 1, 0, 1)
+# for i in range(0, 256, 4):
+# 	sym0 = enc.encode(i, 0, 1)
+# 	sym1 = enc.encode(i ^ 1, 0, 1)
+# 	assert(enc.imbalance == 0)
+# 	print(f"0x{sym0 | (sym1 << 10):05x}u,")
+
+###
+# Fullres 1bpp table: (each entry is 2 words, 4 pixels)
+
+# (note trick here is that encoding 0x00 or 0xff sets imbalance to -8, and
+# (encoding 0x01 or 0xfe returns imbalance to 0, so we alternate between these
+# (two pairs of dark/light colours. Creates some fairly subtle vertical
+# (banding, but it's cheap.
+
+for i in range(1 << 4):
+	syms = list(enc.encode((0xff if i & 1 << j else 0) ^ j & 0x01, 0, 1) for j in range(4))
+	print(f"0x{syms[0] | syms[1] << 10:05x}, 0x{syms[2] | syms[3] << 10:05x}")
 	assert(enc.imbalance == 0)
-	print(f"0x{sym0 | (sym1 << 10):05x}u,")
 
 ###
 # Fullres table stuff:

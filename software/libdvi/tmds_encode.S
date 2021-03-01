@@ -42,6 +42,14 @@
 // r1: Output buffer (word-aligned)
 // r2: Input size (pixels)
 
+.macro do_channel_16bpp r_ibase r_inout0 r_out1
+	str \r_inout0, [\r_ibase, #ACCUM0_OFFS]
+	ldr \r_inout0, [\r_ibase, #PEEK0_OFFS]
+	ldr \r_inout0, [\r_inout0]
+	ldr \r_out1, [\r_ibase, #PEEK1_OFFS]
+	ldr \r_out1, [\r_out1]
+.endm
+
 decl_func tmds_encode_loop_16bpp
 	push {r4, r5, r6, r7, lr}
 	lsls r2, #2
@@ -52,15 +60,10 @@ decl_func tmds_encode_loop_16bpp
 .align 2
 1:
 .rept TMDS_ENCODE_UNROLL
-	ldmia r0!, {r4}
-	str r4, [r2, #ACCUM0_OFFS]
-	ldr r4, [r2, #PEEK0_OFFS]
-	ldr r4, [r4]
-	ldr r6, [r2, #PEEK1_OFFS]
-	ldr r6, [r6]
-	// TODO our pixels are now 2 per word instead of 1 per word, so this store is
-	// now 2 words instead of 4; reexpand it.
-	stmia r1!, {r4, r6}
+	ldmia r0!, {r4, r6}
+	do_channel_16bpp r2, r4, r5
+	do_channel_16bpp r2, r6, r7
+	stmia r1!, {r4, r5, r6, r7}
 .endr
 2:
 	cmp r1, ip
@@ -85,14 +88,12 @@ decl_func tmds_encode_loop_16bpp_leftshift
 .align 2
 1:
 .rept TMDS_ENCODE_UNROLL
-	ldmia r0!, {r4}
+	ldmia r0!, {r4, r6}
 	lsls r4, r3
-	str r4, [r2, #ACCUM0_OFFS]
-	ldr r4, [r2, #PEEK0_OFFS]
-	ldr r4, [r4]
-	ldr r6, [r2, #PEEK1_OFFS]
-	ldr r6, [r6]
-	stmia r1!, {r4, r6}
+	do_channel_16bpp r2, r4, r5
+	lsls r6, r3
+	do_channel_16bpp r2, r6, r7
+	stmia r1!, {r4, r5, r6, r7}
 .endr
 2:
 	cmp r1, ip
@@ -181,27 +182,24 @@ decl_func tmds_encode_loop_8bpp_leftshift
 // - Subsequently encoding either 0x01 or 0xfe will return the balance to 0, with
 //  output symbol of 0x1ff or 0x2ff
 // 
-// So we can transform a black and white image to TMDS symbols with the
-// following table:
-// 
-// x % 2 | Colour | Output
-// ------+--------+--------
-// 0     | 0      | 0x9aaaa
-// 0     | 1      | 0x6aaaa
-// 1     | 0      | 0x95555
-// 1     | 1      | 0x65555
+// So we can do 1bpp encode with a lookup of x coordinate LSB, and input
+// colour bit. If we process pixels in even-sized blocks, only the colour
+// lookup is needed.
 
-
-// Encode 4 pixels @ 1bpp (using one table lookup)
+// Encode 8 pixels @ 1bpp (using two table lookups)
 // r3 contains lookup mask (preshifted)
 // r8 contains pointer to encode table
-// 3.25 cyc/pix
-.macro tmds_encode_1bpp_body shift_instr shamt
-	\shift_instr r4, r2, #\shamt
+// 2.125 cyc/pix
+.macro tmds_encode_1bpp_body shift_instr0 shamt0 shift_instr1 shamt1
+	\shift_instr0 r4, r2, #\shamt0
 	ands r4, r3
 	add r4, r8
-	ldmia r4, {r4-r7}
-	stmia r1!, {r4-r7}
+	ldmia r4, {r4, r5}
+	\shift_instr1 r6, r2, #\shamt1
+	ands r6, r3
+	add r6, r8
+	ldmia r6, {r6, r7}
+	stmia r1!, {r4, r5, r6, r7}
 .endm
 
 // r0: input buffer (word-aligned)
@@ -211,24 +209,20 @@ decl_func tmds_encode_1bpp
 	push {r4-r7, lr}
 	mov r7, r8
 	push {r7}
-	lsls r2, #2
+	lsls r2, #1
 	add r2, r1
 	mov ip, r2
 	adr r4, tmds_1bpp_table
 	mov r8, r4
-	// Mask: 4 bit index, 16 bytes per entry
-	movs r3, #0xf0
+	// Mask: 4 bit index, 8 bytes per entry
+	movs r3, #0x78
 	b 2f
 1:
 	ldmia r0!, {r2}
-	tmds_encode_1bpp_body lsls 4
-	tmds_encode_1bpp_body lsls 0
-	tmds_encode_1bpp_body lsrs 4
-	tmds_encode_1bpp_body lsrs 8
-	tmds_encode_1bpp_body lsrs 12
-	tmds_encode_1bpp_body lsrs 16
-	tmds_encode_1bpp_body lsrs 20
-	tmds_encode_1bpp_body lsrs 24
+	tmds_encode_1bpp_body lsls 3  lsrs 1
+	tmds_encode_1bpp_body lsrs 5  lsrs 9
+	tmds_encode_1bpp_body lsrs 13 lsrs 17
+	tmds_encode_1bpp_body lsrs 21 lsrs 25
 2:
 	cmp r1, ip
 	blo 1b
@@ -239,22 +233,22 @@ decl_func tmds_encode_1bpp
 
 .align 2
 tmds_1bpp_table:
-	.word 0x9aaaa, 0x95555, 0x9aaaa, 0x95555   // 0000
-	.word 0x6aaaa, 0x95555, 0x9aaaa, 0x95555   // 0001
-	.word 0x9aaaa, 0x65555, 0x9aaaa, 0x95555   // 0010
-	.word 0x6aaaa, 0x65555, 0x9aaaa, 0x95555   // 0011
-	.word 0x9aaaa, 0x95555, 0x6aaaa, 0x95555   // 0100
-	.word 0x6aaaa, 0x95555, 0x6aaaa, 0x95555   // 0101
-	.word 0x9aaaa, 0x65555, 0x6aaaa, 0x95555   // 0110
-	.word 0x6aaaa, 0x65555, 0x6aaaa, 0x95555   // 0111
-	.word 0x9aaaa, 0x95555, 0x9aaaa, 0x65555   // 1000
-	.word 0x6aaaa, 0x95555, 0x9aaaa, 0x65555   // 1001
-	.word 0x9aaaa, 0x65555, 0x9aaaa, 0x65555   // 1010
-	.word 0x6aaaa, 0x65555, 0x9aaaa, 0x65555   // 1011
-	.word 0x9aaaa, 0x95555, 0x6aaaa, 0x65555   // 1100
-	.word 0x6aaaa, 0x95555, 0x6aaaa, 0x65555   // 1101
-	.word 0x9aaaa, 0x65555, 0x6aaaa, 0x65555   // 1110
-	.word 0x6aaaa, 0x65555, 0x6aaaa, 0x65555   // 1111
+	.word 0x7fd00, 0x7fd00  // 0000
+	.word 0x7fe00, 0x7fd00  // 0001
+	.word 0xbfd00, 0x7fd00  // 0010
+	.word 0xbfe00, 0x7fd00  // 0011
+	.word 0x7fd00, 0x7fe00  // 0100
+	.word 0x7fe00, 0x7fe00  // 0101
+	.word 0xbfd00, 0x7fe00  // 0110
+	.word 0xbfe00, 0x7fe00  // 0111
+	.word 0x7fd00, 0xbfd00  // 1000
+	.word 0x7fe00, 0xbfd00  // 1001
+	.word 0xbfd00, 0xbfd00  // 1010
+	.word 0xbfe00, 0xbfd00  // 1011
+	.word 0x7fd00, 0xbfe00  // 1100
+	.word 0x7fe00, 0xbfe00  // 1101
+	.word 0xbfd00, 0xbfe00  // 1110
+	.word 0xbfe00, 0xbfe00  // 1111
 
 // ----------------------------------------------------------------------------
 // Full-resolution RGB encode (not very practical)
