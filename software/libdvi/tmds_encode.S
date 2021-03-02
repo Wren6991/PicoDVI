@@ -311,11 +311,6 @@ tmds_1bpp_table:
 	str r4, [r2, #ACCUM1_OFFS]
 	str r4, [r2, #ACCUM1_OFFS + INTERP1]
 
-	// Mask for upper 6 bits of accum in r3, used to break carries from TMDS
-	// symbols into DC balance in ACCUM1
-	movs r3, #0x3f
-	lsls r3, #26
-
 	// Keep loop start pointer in r8 so we can get a longer backward branch
 	adr r4, 1f
 	adds r4, #1 // god damn thumb bit why is this a thing
@@ -389,12 +384,6 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	movs r4, #0
 	str r4, [r2, #ACCUM1_OFFS]
 	str r4, [r2, #ACCUM1_OFFS + INTERP1]
-
-	// Mask for upper 6 bits of accum in r9, used to break carries from TMDS
-	// symbols into DC balance in ACCUM1
-	movs r4, #0x3f
-	lsls r4, #26
-	mov r9, r4
 
 	adr r4, 1f
 	adds r4, #1
