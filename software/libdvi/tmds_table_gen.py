@@ -98,16 +98,16 @@ enc = TMDSEncode()
 # (two pairs of dark/light colours. Creates some fairly subtle vertical
 # (banding, but it's cheap.
 
-for i in range(1 << 4):
-	syms = list(enc.encode((0xff if i & 1 << j else 0) ^ j & 0x01, 0, 1) for j in range(4))
-	print(f"0x{syms[0] | syms[1] << 10:05x}, 0x{syms[2] | syms[3] << 10:05x}")
-	assert(enc.imbalance == 0)
+# for i in range(1 << 4):
+# 	syms = list(enc.encode((0xff if i & 1 << j else 0) ^ j & 0x01, 0, 1) for j in range(4))
+# 	print(f"0x{syms[0] | syms[1] << 10:05x}, 0x{syms[2] | syms[3] << 10:05x}")
+# 	assert(enc.imbalance == 0)
 
 ###
 # Fullres table stuff:
 
 # def disptable_format(sym):
-# 	return differentialise(sym, 10) | ((popcount(sym) * 2 - 10 & 0x3f) << 26)
+# 	return sym | ((popcount(sym) * 2 - 10 & 0x3f) << 26)
 
 # print("// Non-negative running disparity:")
 # for i in range(0, 256, 4):

@@ -275,11 +275,9 @@ tmds_1bpp_table:
 // once (2 words), and write 4 at once (4 words). This gives 7 cyc/pix.
 //
 // One issue is that the TMDS data in the bottom of ACCUM1 will eventually
-// overflow and affect the running disparity. At least 64 pixels will pass
-// before this happens, so we just need to read out ACCUM1, mask it, and write
-// it back at least once every 64 pixels. This could be done at the end of
-// every unrolled loop, before the test and branch. At 16 pix/loop this is an
-// additional 0.5 cyc/pix.
+// overflow and affect the running disparity, but with 16 zeroes in between,
+// this would take much longer than one scanline, so everything is fine if
+// we clear the accumulator at the start of the scanline.
 //
 // Note that we need to use two interpolators to get the bits from both pixels
 // -- we are not outputting a single DC-balanced stream, but rather two
@@ -355,16 +353,6 @@ tmds_1bpp_table:
 
 	stmia r1!, {r4, r5, r6, r7}
 .endr
-	// Need to mask away bottoms of ACCUM1 before the TMDS data overflows into
-	// disparity counter. This costs 8 cycles per loop body.
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	ldr r4, [r2, #ACCUM1_OFFS]
-	ands r4, r3
-	str r4, [r2, #ACCUM1_OFFS]
-	ldr r4, [r2, #ACCUM1_OFFS + INTERP1]
-	ands r4, r3
-	str r4, [r2, #ACCUM1_OFFS + INTERP1]
-#endif
 2:
 	cmp r1, ip
 	beq 1f
@@ -447,17 +435,6 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 
 	stmia r1!, {r4, r5, r6, r7}
 .endr
-	// Need to mask away bottoms of ACCUM1 before the TMDS data overflows into
-	// disparity counter
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	mov r5, r9
-	ldr r4, [r2, #ACCUM1_OFFS]
-	ands r4, r5
-	str r4, [r2, #ACCUM1_OFFS]
-	ldr r4, [r2, #ACCUM1_OFFS + INTERP1]
-	ands r4, r5
-	str r4, [r2, #ACCUM1_OFFS + INTERP1]
-#endif
 2:
 	cmp r1, ip
 	beq 1f

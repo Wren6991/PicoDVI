@@ -201,13 +201,17 @@ const uint32_t __dvi_const(dvi_ctrl_syms)[4] = {
 
 // Output solid red scanline if we are given NULL for tmdsbuff
 #if DVI_SYMBOLS_PER_WORD == 2
-static uint32_t __attribute__((aligned(8))) __dvi_const(empty_scanline_tmds)[3] = {
-	0x7fd00u, // 0x00
-	0x7fd00u, // 0x00
-	0xbfa01u  // 0xfc
+static uint32_t __dvi_const(empty_scanline_tmds)[3] = {
+	0x7fd00u, // 0x00, 0x00
+	0x7fd00u, // 0x00, 0x00
+	0xbfa01u  // 0xfc, 0xfc
 };
 #else
-#error "Can't handle empty scanlines with pixel-per-word right now"
+static uint32_t __attribute__((aligned(8))) __dvi_const(empty_scanline_tmds)[6] = {
+	0x100u, 0x1ffu, // 0x00, 0x00
+	0x100u, 0x1ffu, // 0x00, 0x00
+	0x201u, 0x2feu  // 0xfc, 0xfc
+};
 #endif
 
 void dvi_timing_state_init(struct dvi_timing_state *t) {
@@ -259,6 +263,7 @@ void dvi_setup_scanline_for_vblank(const struct dvi_timing *t, const struct dvi_
 	const uint32_t *sym_no_sync   = get_ctrl_sym(false,  false             );
 
 	dma_cb_t *synclist = dvi_lane_from_list(l, TMDS_SYNC_LANE);
+	// The symbol table contains each control symbol *twice*, concatenated into 20 LSBs of table word, so we can always do word-repeat.
 	_set_data_cb(&synclist[0], &dma_cfg[TMDS_SYNC_LANE], sym_hsync_off, t->h_front_porch   / DVI_SYMBOLS_PER_WORD, 2, false);
 	_set_data_cb(&synclist[1], &dma_cfg[TMDS_SYNC_LANE], sym_hsync_on,  t->h_sync_width    / DVI_SYMBOLS_PER_WORD, 2, false);
 	_set_data_cb(&synclist[2], &dma_cfg[TMDS_SYNC_LANE], sym_hsync_off, t->h_back_porch    / DVI_SYMBOLS_PER_WORD, 2, true);
@@ -298,7 +303,7 @@ void dvi_setup_scanline_for_active(const struct dvi_timing *t, const struct dvi_
 				t->h_active_pixels / DVI_SYMBOLS_PER_WORD, 0, false);
 		}
 		else {
-			// 8-byte read ring mode to repeat the correct DC-balanced symbol pair on blank scanlines
+			// Use read ring to repeat the correct DC-balanced symbol pair on blank scanlines (4 or 8 byte period)
 			_set_data_cb(&cblist[target_block], &dma_cfg[i], &empty_scanline_tmds[2 * i / DVI_SYMBOLS_PER_WORD],
 				t->h_active_pixels / DVI_SYMBOLS_PER_WORD, DVI_SYMBOLS_PER_WORD == 2 ? 2 : 3, false);
 		}

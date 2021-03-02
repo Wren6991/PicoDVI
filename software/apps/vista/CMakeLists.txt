@@ -13,8 +13,14 @@ target_compile_definitions(vista_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=2)
 pico_set_boot_stage2(vista vista_boot2)
 
 
-target_compile_definitions(vista PRIVATE DVI_VERTICAL_REPEAT=1 DVI_N_TMDS_BUFFERS=5)
+target_compile_definitions(vista PRIVATE
+	DVI_VERTICAL_REPEAT=1
+	DVI_N_TMDS_BUFFERS=5
+	DVI_SYMBOLS_PER_WORD=1
+	)
+
 target_compile_definitions(vista PRIVATE PICO_STACK_SIZE=0x200)
+
 
 target_link_libraries(vista
 	pico_stdlib
