@@ -78,7 +78,7 @@ int main() {
 	dma_channel_configure(dma_chan_get, &c,
 		NULL,
 		&encode_pio->rxf[encode_sm],
-		FRAME_WIDTH,
+		FRAME_WIDTH / DVI_SYMBOLS_PER_WORD,
 		false
 	);
 #endif
