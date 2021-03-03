@@ -250,6 +250,97 @@ tmds_1bpp_table:
 	.word 0xbfd00, 0xbfe00  // 1110
 	.word 0xbfe00, 0xbfe00  // 1111
 
+
+// ----------------------------------------------------------------------------
+// Full-resolution 2bpp encode (for 2bpp grayscale, or bitplaned RGB222)
+
+// Not very fast yet -- just a proof of concept. Even-numbered pixels are
+// encoded with symbols with imbalance -4, and odd-numbered symbols are
+// encoded with weight 4, so that we can mix-and-match our even/odd codewords
+// and always get a properly balanced sequence:
+//
+// level 0: (05 -> 103), then (04 -> 1fc)  (decimal 5, 4)
+// level 1: (50 -> 130), then (51 -> 1cf)  (decimal 80, 81)
+// level 2: (af -> 230), then (ae -> 2cf)  (decimal 175, 174)
+// level 3: (fa -> 203), then (fb -> 2fc)  (decimal 250, 251)
+//
+// These correspond to roughly 255 times (0, 1/3, 2/3, 1).
+//
+// Alternatively we could use symbols with 0 balance, which results in lower
+// contrast but avoids the LSB bobble:
+//
+// level 0: (10 -> 1f0) always
+// level 1: (5a -> 263) always
+// level 2: (a5 -> 163) always
+// level 3: (ef -> 2f0) always
+
+// Table base pointer in r8. Input pixels in r2.
+.macro encode_2bpp_body shift_instr shamt rd
+	\shift_instr \rd, r2, #\shamt
+	ands \rd, r3
+	add \rd, r8
+	ldr \rd, [\rd]
+.endm
+
+// r0: input buffer (word-aligned)
+// r1: output buffer (word-aligned)
+// r2: output pixel count
+decl_func tmds_encode_2bpp
+	push {r4-r7, lr}
+	mov r7, r8
+	push {r7}
+
+	adr r7, tmds_2bpp_table
+	mov r8, r7
+
+	// Mask: 4-bit index into 4-byte entries.
+	movs r3, #0x3c
+
+	// Limit pointer: 1 word per 2 pixels, so 2 bytes per pixel.
+	lsls r2, #1
+	add r2, r1
+	mov ip, r2
+
+	b 2f
+1:
+	ldmia r0!, {r2}
+	encode_2bpp_body lsls 2  r4
+	encode_2bpp_body lsrs 2  r5
+	encode_2bpp_body lsrs 6  r6
+	encode_2bpp_body lsrs 10 r7
+	stmia r1!, {r4-r7}
+	encode_2bpp_body lsrs 14 r4
+	encode_2bpp_body lsrs 18 r5
+	encode_2bpp_body lsrs 22 r6
+	encode_2bpp_body lsrs 26 r7
+	stmia r1!, {r4-r7}
+2:
+	cmp r1, ip
+	blo 1b
+
+	pop {r7}
+	mov r8, r7
+	pop {r4-r7, pc}
+
+.align 2
+tmds_2bpp_table:
+	.word 0x7f103 // 00, 00
+	.word 0x7f130 // 01, 00
+	.word 0x7f230 // 10, 00
+	.word 0x7f203 // 11, 00
+	.word 0x73d03 // 00, 01
+	.word 0x73d30 // 01, 01
+	.word 0x73e30 // 10, 01
+	.word 0x73e03 // 11, 01
+	.word 0xb3d03 // 00, 10
+	.word 0xb3d30 // 01, 10
+	.word 0xb3e30 // 10, 10
+	.word 0xb3e03 // 11, 10
+	.word 0xbf103 // 00, 11
+	.word 0xbf130 // 01, 11
+	.word 0xbf230 // 10, 11
+	.word 0xbf203 // 11, 11
+
 // ----------------------------------------------------------------------------
 // Full-resolution RGB encode (not very practical)
 

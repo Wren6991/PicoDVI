@@ -126,3 +126,25 @@ enc = TMDSEncode()
 # 	sym = enc.encode(0, i, 0)
 # 	print(f"0x{sym << 10 | sym:05x},")
 
+
+###
+# Find zero-balance symbols:
+
+# for i in range(256):
+# 	enc.imbalance = 0
+# 	sym = enc.encode(i, 0, 1)
+# 	if enc.imbalance == 0:
+# 		print(f"{i:02x}: {sym:03x}")
+
+###
+# Generate 2bpp table based on above experiment:
+
+levels_2bpp_even = [0x05, 0x50, 0xaf, 0xfa]
+levels_2bpp_odd  = [0x04, 0x51, 0xae, 0xfb]
+
+for i1, p1 in enumerate(levels_2bpp_odd):
+	for i0, p0 in enumerate(levels_2bpp_even):
+		sym0 = enc.encode(p0, 0, 1)
+		sym1 = enc.encode(p1, 0, 1)
+		assert(enc.imbalance == 0)
+		print(f".word 0x{sym1 << 10 | sym0:05x} // {i0:02b}, {i1:02b}")
