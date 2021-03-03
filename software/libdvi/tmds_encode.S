@@ -254,10 +254,9 @@ tmds_1bpp_table:
 // ----------------------------------------------------------------------------
 // Full-resolution 2bpp encode (for 2bpp grayscale, or bitplaned RGB222)
 
-// Not very fast yet -- just a proof of concept. Even-numbered pixels are
-// encoded with symbols with imbalance -4, and odd-numbered symbols are
-// encoded with weight 4, so that we can mix-and-match our even/odd codewords
-// and always get a properly balanced sequence:
+// Even-x-position pixels are encoded as symbols with imbalance -4, and odd
+// pixels with +4, so that we can mix-and-match our even/odd codewords and
+// always get a properly balanced sequence:
 //
 // level 0: (05 -> 103), then (04 -> 1fc)  (decimal 5, 4)
 // level 1: (50 -> 130), then (51 -> 1cf)  (decimal 80, 81)
@@ -274,12 +273,11 @@ tmds_1bpp_table:
 // level 2: (a5 -> 163) always
 // level 3: (ef -> 2f0) always
 
-// Table base pointer in r8. Input pixels in r2.
+// Table base pointer in r0. Input pixels in r2.
 .macro encode_2bpp_body shift_instr shamt rd
 	\shift_instr \rd, r2, #\shamt
 	ands \rd, r3
-	add \rd, r8
-	ldr \rd, [\rd]
+	ldr \rd, [r0, \rd]
 .endm
 
 // r0: input buffer (word-aligned)
@@ -289,21 +287,19 @@ decl_func tmds_encode_2bpp
 	push {r4-r7, lr}
 	mov r7, r8
 	push {r7}
-
-	adr r7, tmds_2bpp_table
-	mov r8, r7
-
+	mov r8, r0
+	adr r0, tmds_2bpp_table
 	// Mask: 4-bit index into 4-byte entries.
 	movs r3, #0x3c
-
-	// Limit pointer: 1 word per 2 pixels, so 2 bytes per pixel.
+	// Limit pointer: 1 word per 2 pixels
 	lsls r2, #1
 	add r2, r1
 	mov ip, r2
-
 	b 2f
 1:
-	ldmia r0!, {r2}
+	mov r4, r8
+	ldmia r4!, {r2}
+	mov r8, r4
 	encode_2bpp_body lsls 2  r4
 	encode_2bpp_body lsrs 2  r5
 	encode_2bpp_body lsrs 6  r6
@@ -317,7 +313,6 @@ decl_func tmds_encode_2bpp
 2:
 	cmp r1, ip
 	blo 1b
-
 	pop {r7}
 	mov r8, r7
 	pop {r4-r7, pc}
