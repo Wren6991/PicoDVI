@@ -38,12 +38,13 @@ int main() {
 	dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
 
-	// Fill all of DVI's TMDS buffers with valid symbols (fine vertical stripes),
+	// Fill all of DVI's TMDS buffers with valid DC-balanced symbol pairs (mid-grey),
 	// as we'll only be rendering into the middle part of each span
 	uint32_t *buf;
+	const uint32_t two_0x80_symbols = 0x5fd80u;
 	while (queue_try_remove_u32(&dvi0.q_tmds_free, &buf)) {
-		for (int i = 0; i < FRAME_WIDTH; ++i)
-			buf[i] = i & 1 ? 0x99555 : 0x96aaa;
+		for (int i = 0; i < FRAME_WIDTH / DVI_SYMBOLS_PER_WORD; ++i)
+			buf[i] = two_0x80_symbols;
 		queue_add_blocking_u32(&dvi0.q_tmds_valid, &buf);
 	}
 	// Shuffle them back to the free queue so we don't have to deal with the timing later
@@ -52,14 +53,14 @@ int main() {
 
 	dvi_start(&dvi0);
 
-	const uint8_t *line = (const uint8_t *)MOVIE_BASE;
 	int frame = 0;
 	while (true) {
+		const uint8_t *line = frame_bin;
 		uint32_t *render_target;
 		for (int y = 0; y < FRAME_HEIGHT; ++y) {
 			uint8_t line_len = *line++;
 			queue_remove_blocking_u32(&dvi0.q_tmds_free, &render_target);
-			rle_to_tmds(line, render_target + (1280 - 960) / 2, line_len);
+			rle_to_tmds(line, render_target + (1280 - 960) / 2 / DVI_SYMBOLS_PER_WORD, line_len);
 			queue_add_blocking_u32(&dvi0.q_tmds_valid, &render_target);
 			line += line_len;
 		}

@@ -1,3 +1,6 @@
+// Note this is a fairly suboptimal approach now, see tmds_encode_1bpp in
+// tmds_encode.S for a faster and more general solution
+
 // Taking the encoder from DVI spec, with initial balance 0:
 // 
 // - Encoding either 0x00 or 0xff will produce a running balance of -8, with
@@ -11,12 +14,12 @@
 // 
 // x % 2 | Colour | Output
 // ------+--------+--------
-// 0     | 0      | 0x9aaaa
-// 0     | 1      | 0x6aaaa
-// 1     | 0      | 0x95555
-// 1     | 1      | 0x65555
+// 0     | 0      | 0x100
+// 0     | 1      | 0x200
+// 1     | 0      | 0x1ff
+// 1     | 1      | 0x2ff
 // 
-// We will use this to rapidly unpack bytes encoded in the following RLE:
+// We will use this to unpack bytes encoded in the following RLE:
 // 
 // 7|6|5    0
 // a|b|nnnnnn
@@ -31,43 +34,35 @@
 .type rle_to_tmds,%function
 .thumb_func
 rle_to_tmds:
-	push {r4-r6, lr}
+	push {r4, lr}
 	add r2, r0
 	mov ip, r2
-	adr r5, tmds_bw_pix0
-	adr r6, tmds_bw_pix1
+	adr r4, tmds_table
 	b 3f
 1:
 	ldrb r2, [r0]
 	add r0, #1
 
-	// Pixel 0 symbol in r3: (could speed these bits up with interp)
-	lsr r3, r2, #7
+	// Load symbol pair
+	lsr r3, r2, #6
 	lsl r3, #2
-	ldr r3, [r3, r5]
-
-	// Pixel 1 symbol in r4:
-	lsr r4, r2, #6
-	lsl r4, #31
-	lsr r4, #29
-	ldr r4, [r4, r6]
+	ldr r3, [r4, r3]
 
 	// run length - 1 in r2:
 	lsl r2, #26
 	lsr r2, #26
 2:
-	stmia r1!, {r3, r4}
+	stmia r1!, {r3}
 	sub r2, #1
 	bcs 2b
 3:
 	cmp r0, ip
 	bne 1b
-	pop {r4-r6, pc}
+	pop {r4, pc}
 
 .align 2
-tmds_bw_pix0:
-	.word 0x9aaaa
-	.word 0x6aaaa
-tmds_bw_pix1:
-	.word 0x95555
-	.word 0x65555
+tmds_table:
+	.word 0x7fd00 // 00
+	.word 0xbfd00 // 10
+	.word 0x7fe00 // 01
+	.word 0xbfe00 // 11
