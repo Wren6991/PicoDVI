@@ -15,7 +15,7 @@
 #include "test_frame.h"
 
 #define MOVIE_BASE (XIP_BASE + 0x10000)
-#define MOVIE_FRAMES 1799
+#define MOVIE_FRAMES 209
 
 // DVDD 1.25V (slower silicon may need the full 1.3, or just not work)
 #define FRAME_WIDTH 1280
@@ -54,8 +54,8 @@ int main() {
 	dvi_start(&dvi0);
 
 	int frame = 0;
+	const uint8_t *line = (const uint8_t*)MOVIE_BASE;
 	while (true) {
-		const uint8_t *line = frame_bin;
 		uint32_t *render_target;
 		for (int y = 0; y < FRAME_HEIGHT; ++y) {
 			uint8_t line_len = *line++;
