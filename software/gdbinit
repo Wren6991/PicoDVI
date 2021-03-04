@@ -1,5 +1,5 @@
 set arch arm
-set confirm off
+targ rem localhost:3333
 set disassemble-next-line on
-target remote localhost:3333
-file picodvi.elf
+set confirm off
+file apps/sprite_bounce/sprite_bounce.elf

@@ -108,7 +108,7 @@ void core1_main() {
 			for (uint component = 0; component < 3; ++component) {
 				tmds_encode_1bpp(
 					(const uint32_t*)&framebuf[y * FRAME_WIDTH / 8 + component * PLANE_SIZE_BYTES],
-					tmdsbuf + component * FRAME_WIDTH,
+					tmdsbuf + component * FRAME_WIDTH / DVI_SYMBOLS_PER_WORD,
 					FRAME_WIDTH
 				);
 			}
