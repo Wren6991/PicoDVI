@@ -8,6 +8,12 @@ add_executable(bad_apple
 	rle_decompress.S
 )
 
+# Increase CLKDIV to 4, because we're going to run the system at 372 MHz, and
+# the flash gets rather unhappy if you try to clock it at 186 MHz
+pico_define_boot_stage2(bad_apple_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
+target_compile_definitions(bad_apple_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
+pico_set_boot_stage2(bad_apple bad_apple_boot2)
+
 target_include_directories(bad_apple PRIVATE
 	${CMAKE_CURRENT_LIST_DIR}
 )
