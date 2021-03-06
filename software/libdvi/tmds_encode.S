@@ -469,6 +469,10 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	// DC balance defined to be 0 at start of scanline:
 	movs r4, #0
 	str r4, [r2, #ACCUM1_OFFS]
+#if TMDS_FULLRES_NO_DC_BALANCE
+	// Alternate parity between odd/even symbols if there's no balance feedback
+	mvns r4, r4
+#endif
 	str r4, [r2, #ACCUM1_OFFS + INTERP1]
 
 	adr r4, 1f
