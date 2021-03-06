@@ -542,7 +542,7 @@ decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 	push {r4}
 
 
-	lsls r2, #2
+	lsls r2, #1
 	add r2, r1
 	mov ip, r2
 	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
@@ -573,21 +573,25 @@ decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 #if !TMDS_FULLRES_NO_DC_BALANCE
 	str r5, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
+	lsls r5, #10
+	orrs r4, r5
 
 	str r6, [r2, #ACCUM0_OFFS + INTERP1]
 	str r6, [r2, #ACCUM0_OFFS]
-	ldr r6, [r2, #PEEK2_OFFS]
+	ldr r5, [r2, #PEEK2_OFFS]
+	ldr r5, [r5]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str r5, [r2, #ACCUM1_ADD_OFFS]
+#endif
+	ldr r6, [r2, #PEEK2_OFFS + INTERP1]
 	ldr r6, [r6]
 #if !TMDS_FULLRES_NO_DC_BALANCE
-	str r6, [r2, #ACCUM1_ADD_OFFS]
+	str r6, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
+	lsls r6, #10
+	orrs r5, r6
 
-	stmia r1!, {r4, r5, r6, r7}
+	stmia r1!, {r4, r5}
 .endr
 2:
 	cmp r1, ip

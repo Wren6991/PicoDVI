@@ -208,21 +208,21 @@ void __not_in_flash_func(tmds_encode_palette_data)(const uint32_t *pixbuf, const
 
 		interp0_hw->base[2] = (uint32_t)(tmds_palette + (2 << palette_bits));
 		interp1_hw->base[2] = (uint32_t)(tmds_palette + (2 << palette_bits));
-		tmds_palette_encode_loop_x(pixbuf, symbuf + n_pix, n_pix);
+		tmds_palette_encode_loop_x(pixbuf, symbuf + (n_pix >> 1), n_pix);
 
 		interp0_hw->base[2] = (uint32_t)(tmds_palette + (4 << palette_bits));
 		interp1_hw->base[2] = (uint32_t)(tmds_palette + (4 << palette_bits));
-		tmds_palette_encode_loop_x(pixbuf, symbuf + n_pix * 2, n_pix);
+		tmds_palette_encode_loop_x(pixbuf, symbuf + n_pix, n_pix);
 	} else {
 		tmds_palette_encode_loop_y(pixbuf, symbuf, n_pix);
 
 		interp0_hw->base[2] = (uint32_t)(tmds_palette + (2 << palette_bits));
 		interp1_hw->base[2] = (uint32_t)(tmds_palette + (2 << palette_bits));
-		tmds_palette_encode_loop_y(pixbuf, symbuf + n_pix, n_pix);
+		tmds_palette_encode_loop_y(pixbuf, symbuf + (n_pix >> 1), n_pix);
 
 		interp0_hw->base[2] = (uint32_t)(tmds_palette + (4 << palette_bits));
 		interp1_hw->base[2] = (uint32_t)(tmds_palette + (4 << palette_bits));
-		tmds_palette_encode_loop_y(pixbuf, symbuf + n_pix * 2, n_pix);
+		tmds_palette_encode_loop_y(pixbuf, symbuf + n_pix, n_pix);
 	}
 
 #if !TMDS_FULLRES_NO_INTERP_SAVE
