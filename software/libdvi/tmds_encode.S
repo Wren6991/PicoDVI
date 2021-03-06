@@ -525,3 +525,77 @@ decl_func_x tmds_fullres_encode_loop_16bpp_leftshift_x
 	tmds_fullres_encode_loop_16bpp_leftshift
 decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 	tmds_fullres_encode_loop_16bpp_leftshift
+
+
+// Variant of tmds_fullres_encode_loop_16bpp that reads
+// 8-bit wide pixels packed 4 per word.  The interpolator
+// base is set to a reordered list of TMDS symbols based
+// on a user colour palette.
+
+.macro tmds_palette_encode_loop
+	push {r4-r7, lr}
+	mov r4, r8
+	push {r4}
+
+
+	lsls r2, #2
+	add r2, r1
+	mov ip, r2
+	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
+	// DC balance defined to be 0 at start of scanline:
+	movs r4, #0
+	str r4, [r2, #ACCUM1_OFFS]
+	str r4, [r2, #ACCUM1_OFFS + INTERP1]
+
+	// Keep loop start pointer in r8 so we can get a longer backward branch
+	adr r4, 1f
+	adds r4, #1 // god damn thumb bit why is this a thing
+	mov r8, r4
+	b 2f
+	.align 2
+1:
+.rept 16
+	ldmia r0!, {r4}
+	lsrs r6, r4, #16
+	str r4, [r2, #ACCUM0_OFFS + INTERP1]
+	str r4, [r2, #ACCUM0_OFFS]
+	ldr r4, [r2, #PEEK2_OFFS]
+	ldr r4, [r4]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str r4, [r2, #ACCUM1_ADD_OFFS]
+#endif
+	ldr r5, [r2, #PEEK2_OFFS + INTERP1]
+	ldr r5, [r5]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str r5, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+#endif
+
+	str r6, [r2, #ACCUM0_OFFS + INTERP1]
+	str r6, [r2, #ACCUM0_OFFS]
+	ldr r6, [r2, #PEEK2_OFFS]
+	ldr r6, [r6]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str r6, [r2, #ACCUM1_ADD_OFFS]
+#endif
+	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
+	ldr r7, [r7]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+#endif
+
+	stmia r1!, {r4, r5, r6, r7}
+.endr
+2:
+	cmp r1, ip
+	beq 1f
+	bx r8
+1:
+	pop {r4}
+	mov r8, r4
+	pop {r4-r7, pc}
+.endm
+
+decl_func_x tmds_palette_encode_loop_x
+	tmds_palette_encode_loop
+decl_func_y tmds_palette_encode_loop_y
+	tmds_palette_encode_loop
