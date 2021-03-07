@@ -38,5 +38,4 @@ fixed_pt_t make_fixedf(float x);
 void init_fractal(FractalBuffer* fractal);
 void generate_fractal(FractalBuffer* fractal);
 void generate_one_forward(FractalBuffer* f);
-void generate_steal(FractalBuffer* f, uint dma_to_check);
-void generate_steal_until_done(FractalBuffer* f);
+void generate_steal_one(FractalBuffer* f);

@@ -99,8 +99,8 @@ void init_fractal(FractalBuffer* f)
   f->count_inside = 0;
   f->ipos = 0;
   f->jpos = 0;
-  f->iend = f->cols - 1;
-  f->jend = f->rows - 1;
+  f->iend = f->rows - 1;
+  f->jend = f->cols - 1;
 }
 
 static inline void generate_one(FractalBuffer* f, fixed_pt_t x0, fixed_pt_t y0, uint8_t* buffptr)
@@ -205,21 +205,16 @@ void generate_one_forward(FractalBuffer* f)
   if (f->use_cycle_check) generate_one_cycle_check(f, x0, y0, buffptr);
   else generate_one(f, x0, y0, buffptr);
 
-  // HACK
-  *buffptr <<= 2;
-
   if (++f->jpos == f->cols)
   {
     f->jpos = 0;
-    if (++f->ipos == f->rows) f->done = true;
+    if (++f->ipos > f->iend) f->done = true;
   }
 }
 
-void generate_steal(FractalBuffer* f, uint dma_to_check)
+void generate_steal_one(FractalBuffer* f)
 {
-  if (!dma_channel_is_busy(dma_to_check)) return;
   if (f->done) {
-    dma_channel_wait_for_finish_blocking(dma_to_check);
     return;
   }
 
@@ -227,35 +222,11 @@ void generate_steal(FractalBuffer* f, uint dma_to_check)
 
   fixed_pt_t y0 = f->iminy + f->iend * f->incy;
   fixed_pt_t x0 = f->iminx + f->jend * f->incx;
-  for (; f->iend >= 0; --f->iend, y0 -= f->incy) {
-    for (; f->jend >= 0; x0 -= f->incx) {
-      if (f->use_cycle_check) generate_one_cycle_check(f, x0, y0, buffptr--);
-      else generate_one(f, x0, y0, buffptr--);
+  if (f->use_cycle_check) generate_one_cycle_check(f, x0, y0, buffptr);
+  else generate_one(f, x0, y0, buffptr);
 
-      --f->jend;
-      if (!dma_channel_is_busy(dma_to_check)) return;
-    }
+  if (f->jend-- == 0) {
     f->jend = f->cols - 1;
-    x0 = f->imaxx - f->incx;
-  }
-
-  dma_channel_wait_for_finish_blocking(dma_to_check);
-}
-
-void generate_steal_until_done(FractalBuffer* f)
-{
-  uint8_t* buffptr = f->buff + f->iend * f->cols + f->jend;
-
-  fixed_pt_t y0 = f->iminy + f->iend * f->incy;
-  fixed_pt_t x0 = f->iminx + f->jend * f->incx;
-  for (; f->iend >= 0; --f->iend, y0 -= f->incy) {
-    for (; f->jend >= 0; --f->jend, x0 -= f->incx) {
-      if (f->use_cycle_check) generate_one_cycle_check(f, x0, y0, buffptr--);
-      else generate_one(f, x0, y0, buffptr--);
-
-      if (f->done) return;
-    }
-    f->jend = f->cols - 1;
-    x0 = f->imaxx - f->incx;
+    if (--f->iend < f->ipos) f->done = true;
   }
 }

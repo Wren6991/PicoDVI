@@ -9,7 +9,7 @@ add_executable(mandel-full
 
 target_compile_definitions(mandel-full PRIVATE
 	DVI_VERTICAL_REPEAT=1
-	DVI_N_TMDS_BUFFERS=5
+	DVI_N_TMDS_BUFFERS=8
 	DVI_SYMBOLS_PER_WORD=2
 	)
 
