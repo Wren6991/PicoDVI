@@ -560,8 +560,10 @@ decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 1:
 .rept 8
 	ldmia r0!, {r3, r5}
-	lsrs r4, r3, #16
-	lsrs r6, r5, #16
+	lsrs r4, r3, #14
+	lsls r3, #2
+	lsrs r6, r5, #14
+	lsls r5, #2
 	str r3, [r2, #ACCUM0_OFFS + INTERP1]
 	str r3, [r2, #ACCUM0_OFFS]
 	ldr r3, [r2, #PEEK2_OFFS]
