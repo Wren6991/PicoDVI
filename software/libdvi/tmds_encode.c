@@ -198,10 +198,25 @@ void __not_in_flash_func(tmds_encode_palette_data)(const uint32_t *pixbuf, const
 
 	interp0_hw->base[2] = (uint32_t)tmds_palette;
 	interp1_hw->base[2] = (uint32_t)tmds_palette;
-	interp0_hw->ctrl[0] = 0x40u | ((palette_bits + 1) << SIO_INTERP0_CTRL_LANE0_MASK_MSB_LSB);
-	interp1_hw->ctrl[0] = 0x48u | ((palette_bits + 1) << SIO_INTERP0_CTRL_LANE0_MASK_MSB_LSB);
-	interp0_hw->ctrl[1] = (29 - palette_bits) + 0x420 * (palette_bits + 2);
-	interp1_hw->ctrl[1] = (29 - palette_bits) + 0x420 * (palette_bits + 2);
+
+	// Lane 0 on both interpolators masks the palette bits, starting at bit 2,
+	// The second interpolator also shifts to read the 2nd or 4th byte of the word.
+	interp0_hw->ctrl[0] =
+		(2 << SIO_INTERP0_CTRL_LANE0_MASK_LSB_LSB) |
+		((palette_bits + 1) << SIO_INTERP0_CTRL_LANE0_MASK_MSB_LSB);
+	interp1_hw->ctrl[0] =
+		(8 << SIO_INTERP0_CTRL_LANE0_SHIFT_LSB) |
+		(2 << SIO_INTERP0_CTRL_LANE0_MASK_LSB_LSB) |
+		((palette_bits + 1) << SIO_INTERP0_CTRL_LANE0_MASK_MSB_LSB);
+
+	// Lane 1 shifts and masks the sign bit into the right position to add to the symbol
+	// table index to choose the negative disparity symbols if the sign is negative.
+	const uint32_t ctrl_lane_1 =
+		((31 - (palette_bits + 2)) << SIO_INTERP0_CTRL_LANE0_SHIFT_LSB) |
+		(palette_bits + 2) * ((1 << SIO_INTERP0_CTRL_LANE0_MASK_LSB_LSB) | (1 << SIO_INTERP0_CTRL_LANE0_MASK_MSB_LSB));
+	interp0_hw->ctrl[1] = ctrl_lane_1;
+	interp1_hw->ctrl[1] = ctrl_lane_1;
+
 	if (core) {
 		tmds_palette_encode_loop_x(pixbuf, symbuf, n_pix);
 
