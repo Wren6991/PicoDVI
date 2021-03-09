@@ -38,55 +38,11 @@
 struct dvi_inst dvi0;
 struct semaphore dvi_start_sem;
 
-// Just dumped out register values from running the code in tmds_encode.c:
-// channel_msb: 4, lshift_lower: 3, i0 ctrl: 02801c60, 00002117, i1 ctrl: 02801c6d, 00002117
-// channel_msb: 10, lshift_lower: 0, i0 ctrl: 02801c43, 00002117, i1 ctrl: 02801c53, 00002117
-// channel_msb: 15, lshift_lower: 0, i0 ctrl: 02801c68, 00002117, i1 ctrl: 00001c78, 00002117
-//
-// This saves a few cycles vs doing the setup dynamically (just enough to tip
-// us over the edge as it happens, when proper DC balancing is enabled.)
-
-extern uint32_t tmds_table_fullres_x;
-extern uint32_t tmds_table_fullres_y;
-
-static inline void init_interp_for_encode() {
-	interp0_hw->ctrl[1] = 0x00002117u;
-	interp1_hw->ctrl[1] = 0x00002117u;
-	uint32_t lutbase = (uint32_t)(get_core_num() ? &tmds_table_fullres_x : &tmds_table_fullres_y);
-	interp0_hw->base[2] = (uint32_t)lutbase;
-	interp1_hw->base[2] = (uint32_t)lutbase;
-}
-
-static inline void prepare_scanline_core1(const uint32_t *colourbuf, uint32_t *tmdsbuf) {
+static inline void prepare_scanline(const uint32_t *colourbuf, uint32_t *tmdsbuf) {
 	const uint pixwidth = 640;
-	// Blue
-	interp0_hw->ctrl[0] = 0x02801c60u;
-	interp1_hw->ctrl[0] = 0x02801c6du;
-	tmds_fullres_encode_loop_16bpp_leftshift_x(colourbuf, tmdsbuf, pixwidth, 3);
-	// Green
-	interp0_hw->ctrl[0] = 0x02801c43u;
-	interp1_hw->ctrl[0] = 0x02801c53u;
-	tmds_fullres_encode_loop_16bpp_x(colourbuf, tmdsbuf + pixwidth, pixwidth);
-	// Red
-	interp0_hw->ctrl[0] = 0x02801c68u;
-	interp1_hw->ctrl[0] = 0x00001c78u;
-	tmds_fullres_encode_loop_16bpp_x(colourbuf, tmdsbuf + 2 * pixwidth, pixwidth);
-}
-
-static inline void prepare_scanline_core0(const uint32_t *colourbuf, uint32_t *tmdsbuf) {
-	const uint pixwidth = 640;
-	// Blue
-	interp0_hw->ctrl[0] = 0x02801c60u;
-	interp1_hw->ctrl[0] = 0x02801c6du;
-	tmds_fullres_encode_loop_16bpp_leftshift_y(colourbuf, tmdsbuf, pixwidth, 3);
-	// Green
-	interp0_hw->ctrl[0] = 0x02801c43u;
-	interp1_hw->ctrl[0] = 0x02801c53u;
-	tmds_fullres_encode_loop_16bpp_y(colourbuf, tmdsbuf + pixwidth, pixwidth);
-	// Red
-	interp0_hw->ctrl[0] = 0x02801c68u;
-	interp1_hw->ctrl[0] = 0x00001c78u;
-	tmds_fullres_encode_loop_16bpp_y(colourbuf, tmdsbuf + 2 * pixwidth, pixwidth);
+	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 0 * pixwidth, pixwidth, 4, 0);
+	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 1 * pixwidth, pixwidth, 10, 5);
+	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 2 * pixwidth, pixwidth, 15, 11);
 }
 
 void __no_inline_not_in_flash_func(flash_bulk_dma_start)(uint32_t *rxbuf, uint32_t flash_offs, size_t len, uint dma_chan)
@@ -119,12 +75,10 @@ void __not_in_flash("main") core1_main() {
 	sem_acquire_blocking(&dvi_start_sem);
 	dvi_start(&dvi0);
 
-	init_interp_for_encode();
-
 	while (1) {
 		const uint32_t *colourbuf = (const uint32_t*)multicore_fifo_pop_blocking();
 		uint32_t *tmdsbuf = (uint32_t*)multicore_fifo_pop_blocking();
-		prepare_scanline_core1(colourbuf, tmdsbuf);
+		prepare_scanline(colourbuf, tmdsbuf);
 		multicore_fifo_push_blocking(0);
 	}
 	__builtin_unreachable();
@@ -165,8 +119,6 @@ int __not_in_flash("main") main() {
 	uint slideshow_ctr = 0;
 	uint32_t current_image_base = IMAGE_BASE;
 
-	init_interp_for_encode();
-
 	sem_release(&dvi_start_sem);
 	while (1) {
 		if (++heartbeat >= 30) {
@@ -192,7 +144,7 @@ int __not_in_flash("main") main() {
 			multicore_fifo_push_blocking((uint32_t)their_tmds_buf);
 	
 			queue_remove_blocking_u32(&dvi0.q_tmds_free, &our_tmds_buf);
-			prepare_scanline_core0((const uint32_t*)(img + FRAME_WIDTH * 2), our_tmds_buf);
+			prepare_scanline((const uint32_t*)(img + FRAME_WIDTH * 2), our_tmds_buf);
 			
 			multicore_fifo_pop_blocking();
 			queue_add_blocking_u32(&dvi0.q_tmds_valid, &their_tmds_buf);
