@@ -378,6 +378,21 @@ tmds_2bpp_table:
 // much better, and many monitors will still accept the signals as long as you
 // DC couple your DVI signals.
 
+.macro tmds_fullres_encode_loop_body ra rb
+	str \ra, [r2, #ACCUM0_OFFS + INTERP1]
+	str \ra, [r2, #ACCUM0_OFFS]
+	ldr \ra, [r2, #PEEK2_OFFS]
+	ldr \ra, [\ra]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str \ra, [r2, #ACCUM1_ADD_OFFS]
+#endif
+	ldr \rb, [r2, #PEEK2_OFFS + INTERP1]
+	ldr \rb, [\rb]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str \rb, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+#endif
+.endm
+
 // r0: Input buffer (word-aligned)
 // r1: Output buffer (word-aligned)
 // r2: Pixel count
@@ -396,7 +411,7 @@ tmds_2bpp_table:
 	movs r4, #0
 	str r4, [r2, #ACCUM1_OFFS]
 #if TMDS_FULLRES_NO_DC_BALANCE
-	// Alternate parity between odd/even symbols if there's no balance feedback
+	// Alternate parity between odd/even symbols if no feedback
 	mvns r4, r4
 #endif
 	str r4, [r2, #ACCUM1_OFFS + INTERP1]
@@ -410,32 +425,8 @@ tmds_2bpp_table:
 1:
 .rept 16
 	ldmia r0!, {r4, r6}
-	str r4, [r2, #ACCUM0_OFFS + INTERP1]
-	str r4, [r2, #ACCUM0_OFFS]
-	ldr r4, [r2, #PEEK2_OFFS]
-	ldr r4, [r4]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r4, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r5, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r5, [r5]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r5, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-
-	str r6, [r2, #ACCUM0_OFFS + INTERP1]
-	str r6, [r2, #ACCUM0_OFFS]
-	ldr r6, [r2, #PEEK2_OFFS]
-	ldr r6, [r6]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r6, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-
+	tmds_fullres_encode_loop_body r4 r5
+	tmds_fullres_encode_loop_body r6 r7
 	stmia r1!, {r4, r5, r6, r7}
 .endr
 2:
@@ -454,6 +445,23 @@ decl_func_x tmds_fullres_encode_loop_16bpp_x
 decl_func_y tmds_fullres_encode_loop_16bpp_y
 	tmds_fullres_encode_loop_16bpp
 
+
+.macro tmds_fullres_encode_loop_body_leftshift ra rb
+	// Note we apply the leftshift for INTERP0 only
+	str \ra, [r2, #ACCUM0_OFFS + INTERP1]
+	lsls \ra, r3
+	str \ra, [r2, #ACCUM0_OFFS]
+	ldr \ra, [r2, #PEEK2_OFFS]
+	ldr \ra, [\ra]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str \ra, [r2, #ACCUM1_ADD_OFFS]
+#endif
+	ldr \rb, [r2, #PEEK2_OFFS + INTERP1]
+	ldr \rb, [\rb]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str \rb, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+#endif
+.endm
 
 // r0: Input buffer (word-aligned)
 // r1: Output buffer (word-aligned)
@@ -487,35 +495,8 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 1:
 .rept 16 // 64 pixels per iteration
 	ldmia r0!, {r4, r6}
-	// Note we apply the leftshift for INTERP0 only
-	str r4, [r2, #ACCUM0_OFFS + INTERP1]
-	lsls r4, r3
-	str r4, [r2, #ACCUM0_OFFS]
-	ldr r4, [r2, #PEEK2_OFFS]
-	ldr r4, [r4]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r4, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r5, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r5, [r5]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r5, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-
-	str r6, [r2, #ACCUM0_OFFS + INTERP1]
-	lsls r6, r3
-	str r6, [r2, #ACCUM0_OFFS]
-	ldr r6, [r2, #PEEK2_OFFS]
-	ldr r6, [r6]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r6, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-
+	tmds_fullres_encode_loop_body_leftshift r4 r5
+	tmds_fullres_encode_loop_body_leftshift r6 r7
 	stmia r1!, {r4, r5, r6, r7}
 .endr
 2:
@@ -535,10 +516,32 @@ decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 	tmds_fullres_encode_loop_16bpp_leftshift
 
 
+// ----------------------------------------------------------------------------
+// Full-resolution 8bpp paletted encode
+
 // Variant of tmds_fullres_encode_loop_16bpp that reads
 // 8-bit wide pixels packed 4 per word.  The interpolator
 // base is set to a reordered list of TMDS symbols based
 // on a user colour palette.
+
+// Two pixels input in rd[17:2]. Two symbols output in rd[19:0]. r2 contains
+// interp base pointer. r7 used as temporary.
+.macro tmds_palette_encode_loop_body rd
+	str \rd, [r2, #ACCUM0_OFFS]
+	str \rd, [r2, #ACCUM0_OFFS + INTERP1]
+	ldr \rd, [r2, #PEEK2_OFFS]
+	ldr \rd, [\rd]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str \rd, [r2, #ACCUM1_ADD_OFFS]
+#endif
+	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
+	ldr r7, [r7]
+#if !TMDS_FULLRES_NO_DC_BALANCE
+	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+#endif
+	lsls r7, #10
+	orrs \rd, r7
+.endm
 
 .macro tmds_palette_encode_loop
 	push {r4-r7, lr}
@@ -572,66 +575,10 @@ decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 	lsls r3, #2
 	lsrs r6, r5, #14
 	lsls r5, #2
-	str r3, [r2, #ACCUM0_OFFS + INTERP1]
-	str r3, [r2, #ACCUM0_OFFS]
-	ldr r3, [r2, #PEEK2_OFFS]
-	ldr r3, [r3]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r3, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-	lsls r7, #10
-	orrs r3, r7
-
-	str r4, [r2, #ACCUM0_OFFS + INTERP1]
-	str r4, [r2, #ACCUM0_OFFS]
-	ldr r4, [r2, #PEEK2_OFFS]
-	ldr r4, [r4]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r4, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-	lsls r7, #10
-	orrs r4, r7
-
-	str r5, [r2, #ACCUM0_OFFS + INTERP1]
-	str r5, [r2, #ACCUM0_OFFS]
-	ldr r5, [r2, #PEEK2_OFFS]
-	ldr r5, [r5]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r5, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-	lsls r7, #10
-	orrs r5, r7
-
-	str r6, [r2, #ACCUM0_OFFS + INTERP1]
-	str r6, [r2, #ACCUM0_OFFS]
-	ldr r6, [r2, #PEEK2_OFFS]
-	ldr r6, [r6]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r6, [r2, #ACCUM1_ADD_OFFS]
-#endif
-	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
-	ldr r7, [r7]
-#if !TMDS_FULLRES_NO_DC_BALANCE
-	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
-#endif
-	lsls r7, #10
-	orrs r6, r7
-
+	tmds_palette_encode_loop_body r3
+	tmds_palette_encode_loop_body r4
+	tmds_palette_encode_loop_body r5
+	tmds_palette_encode_loop_body r6
 	stmia r1!, {r3, r4, r5, r6}
 .endr
 2:
