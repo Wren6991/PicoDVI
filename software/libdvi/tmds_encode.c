@@ -7,11 +7,19 @@ static const uint32_t __scratch_x("tmds_table") tmds_table[] = {
 #include "tmds_table.h"
 };
 
-uint32_t __scratch_x("tmds_table_fullres") tmds_table_fullres_x[] = {
+// Fullres table is bandwidth-critical, so gets one copy for each scratch
+// memory. There is a third copy which can go in flash, because it's just used
+// to generate palette LUTs. The ones we don't use will get garbage collected
+// during linking.
+const uint32_t __scratch_x("tmds_table_fullres_x") tmds_table_fullres_x[] = {
 #include "tmds_table_fullres.h"
 };
 
-uint32_t __scratch_y("tmds_table_fullres") tmds_table_fullres_y[] = {
+const uint32_t __scratch_y("tmds_table_fullres_y") tmds_table_fullres_y[] = {
+#include "tmds_table_fullres.h"
+};
+
+const uint32_t tmds_table_fullres_noncritical[] = {
 #include "tmds_table_fullres.h"
 };
 
@@ -175,12 +183,12 @@ void tmds_setup_palette_symbols(const uint16_t *palette, uint32_t *tmds_palette,
 		uint16_t blue = (palette[i] << 1) & 0x3e;
 		uint16_t green = (palette[i] >> 5) & 0x3f;
 		uint16_t red = (palette[i] >> 10) & 0x3e;
-		tmds_palette_blue[i] = tmds_table_fullres_x[blue];
-		tmds_palette_blue[i + n_palette] = tmds_table_fullres_x[64 + blue];
-		tmds_palette_green[i] = tmds_table_fullres_x[green];
-		tmds_palette_green[i + n_palette] = tmds_table_fullres_x[64 + green];
-		tmds_palette_red[i] = tmds_table_fullres_x[red];
-		tmds_palette_red[i + n_palette] = tmds_table_fullres_x[64 + red];
+		tmds_palette_blue[i] = tmds_table_fullres_noncritical[blue];
+		tmds_palette_blue[i + n_palette] = tmds_table_fullres_noncritical[64 + blue];
+		tmds_palette_green[i] = tmds_table_fullres_noncritical[green];
+		tmds_palette_green[i + n_palette] = tmds_table_fullres_noncritical[64 + green];
+		tmds_palette_red[i] = tmds_table_fullres_noncritical[red];
+		tmds_palette_red[i + n_palette] = tmds_table_fullres_noncritical[64 + red];
 	}
 }
 
