@@ -1,4 +1,5 @@
 add_subdirectory(bad_apple)
+add_subdirectory(colour_terminal)
 add_subdirectory(dht_logging)
 add_subdirectory(dual_display)
 add_subdirectory(hello_dvi)
