@@ -73,8 +73,9 @@ struct semaphore dvi_start_sem;
 #define CHAR_COLS (FRAME_WIDTH / FONT_CHAR_WIDTH)
 #define CHAR_ROWS (FRAME_HEIGHT / FONT_CHAR_HEIGHT)
 
+#define COLOUR_PLANE_SIZE_WORDS (CHAR_ROWS * CHAR_COLS * 4 / 32)
 char charbuf[CHAR_ROWS * CHAR_COLS];
-uint32_t colourbuf[CHAR_ROWS * CHAR_COLS * 4 / sizeof(uint32_t)];
+uint32_t colourbuf[COLOUR_PLANE_SIZE_WORDS];
 
 static inline void set_char(uint x, uint y, char c) {
 	if (x >= CHAR_COLS || y >= CHAR_ROWS)
@@ -85,44 +86,32 @@ static inline void set_char(uint x, uint y, char c) {
 static inline void set_colour(uint x, uint y, uint8_t fg, uint8_t bg) {
 	if (x >= CHAR_COLS || y >= CHAR_ROWS)
 		return;
-	uint char_index = y * CHAR_COLS + x;
+	uint char_index = x + y * CHAR_COLS;
 	uint bit_index = char_index % 8 * 4;
 	uint word_index = char_index / 8;
 	// One channel atm
-	uint32_t data_shifted = (uint32_t)(fg & 0x3 | (bg << 2 & 0xc)) << bit_index;
-	uint32_t modify_mask = 0xfu << bit_index;
-	colourbuf[word_index] = colourbuf[word_index] & ~modify_mask | data_shifted;
-}
-
-static inline void prepare_scanline(const char *chars, uint y) {
-	uint32_t *tmdsbuf;
-	queue_remove_blocking(&dvi0.q_tmds_free, &tmdsbuf);
-	tmds_encode_font_2bpp(
-		&charbuf[y / FONT_CHAR_HEIGHT * CHAR_COLS],
-		&colourbuf[y / FONT_CHAR_HEIGHT * CHAR_COLS * 4 / sizeof(uint32_t)],
-		tmdsbuf,
-		FRAME_WIDTH,
-		&font_8x8[y % FONT_CHAR_HEIGHT * FONT_N_CHARS]
-	);
-	queue_add_blocking(&dvi0.q_tmds_valid, &tmdsbuf);
-}
-
-void core1_scanline_callback() {
-	static uint y = 1;
-	prepare_scanline(charbuf, y);
-	y = (y + 1) % FRAME_HEIGHT;
+	uint32_t fg_bg_combined = (fg & 0x3) | (bg << 2 & 0xc);
+	colourbuf[word_index] = (colourbuf[word_index] & ~(0xfu << bit_index)) | (fg_bg_combined << bit_index);
 }
 
 void core1_main() {
 	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
 	sem_acquire_blocking(&dvi_start_sem);
 	dvi_start(&dvi0);
-
-	// The text display is completely IRQ driven (takes up around 30% of cycles @
-	// VGA). We could do something useful, or we could just take a nice nap
-	while (1) 
-		__wfi();
-	__builtin_unreachable();
+	while (true) {
+		for (uint y = 0; y < FRAME_HEIGHT; ++y) {
+			uint32_t *tmdsbuf;
+			queue_remove_blocking(&dvi0.q_tmds_free, &tmdsbuf);
+			tmds_encode_font_2bpp(
+				(const uint8_t*)&charbuf[y / FONT_CHAR_HEIGHT * CHAR_COLS],
+				&colourbuf[y / FONT_CHAR_HEIGHT * (COLOUR_PLANE_SIZE_WORDS / CHAR_ROWS)],
+				tmdsbuf,
+				FRAME_WIDTH,
+				(const uint8_t*)&font_8x8[y % FONT_CHAR_HEIGHT * FONT_N_CHARS] - FONT_FIRST_ASCII
+			);
+			queue_add_blocking(&dvi0.q_tmds_valid, &tmdsbuf);
+		}
+	}
 }
 
 int __not_in_flash("main") main() {
@@ -144,18 +133,14 @@ int __not_in_flash("main") main() {
 
 	dvi0.timing = &DVI_TIMING;
 	dvi0.ser_cfg = DEFAULT_DVI_SERIAL_CONFIG;
-	dvi0.scanline_callback = core1_scanline_callback;
 	dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 
-	for (uint x = 0; x < CHAR_COLS; ++x) {
-		for (uint y = 0; y < CHAR_ROWS; ++y) {
+	for (uint y = 0; y < CHAR_ROWS; ++y) {
+		for (uint x = 0; x < CHAR_COLS; ++x) {
 			set_char(x, y, (x + y * CHAR_COLS) % FONT_N_CHARS + FONT_FIRST_ASCII);
-			set_colour(x, y, x + y, (x + y) >> 2);
+			set_colour(x, y, x, y);
 		}
 	}
-
-	printf("Prepare first scanline\n");
-	prepare_scanline(charbuf, 0);
 
 	printf("Core 1 start\n");
 	sem_init(&dvi_start_sem, 0, 1);
