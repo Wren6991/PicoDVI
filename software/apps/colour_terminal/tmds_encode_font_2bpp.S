@@ -76,7 +76,7 @@
 // r3 is pixel count
 // First stack argument is the font bitmap for this scanline.
 
-.section .scratch_x.tmds_encode_font_2bpp
+.section .scratch_x.tmds_encode_font_2bpp, "ax"
 .global tmds_encode_font_2bpp
 .type tmds_encode_font_2bpp,%function
 .thumb_func
@@ -140,7 +140,7 @@ tmds_encode_font_2bpp:
 //				assert(enc.imbalance == 0)
 //				print(f".word 0x{sym[1] << 10 | sym[0]:05x}, 0x{sym[3] << 10 | sym[2]:05x} // {pixrun:04b}")
 
-.section .scratch_x.palettised_1bpp_tables
+.section .scratch_x.palettised_1bpp_tables, "a"
 .align 2
 palettised_1bpp_tables:
 	// background, foreground = 00, 00

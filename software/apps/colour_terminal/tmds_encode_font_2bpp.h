@@ -17,7 +17,7 @@
 // font_line: pointer to list of 8 pixel bitmaps, each representing the
 // intersection of a font character with the current scanline. (byte-aligned)
 
-void rgb222_font_tmds_encode(const uint8_t *charbuf, const uint32_t	*colourbuf,
+void tmds_encode_font_2bpp(const uint8_t *charbuf, const uint32_t	*colourbuf,
 	uint32_t *tmdsbuf, uint n_pix, const uint8_t *font_line);
 
 #endif
