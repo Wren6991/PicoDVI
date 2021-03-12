@@ -6,7 +6,6 @@ add_executable(colour_terminal
 
 target_compile_definitions(colour_terminal PRIVATE
 	DVI_VERTICAL_REPEAT=1
-	DVI_MONOCHROME_TMDS=1
 	)
 
 # We have a lot in SRAM4 (particularly TMDS LUT) but don't need much stack on

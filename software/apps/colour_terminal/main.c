@@ -65,17 +65,14 @@
 #error "Select a video mode!"
 #endif
 
-#define LED_PIN 16
-
 struct dvi_inst dvi0;
-struct semaphore dvi_start_sem;
 
 #define CHAR_COLS (FRAME_WIDTH / FONT_CHAR_WIDTH)
 #define CHAR_ROWS (FRAME_HEIGHT / FONT_CHAR_HEIGHT)
 
 #define COLOUR_PLANE_SIZE_WORDS (CHAR_ROWS * CHAR_COLS * 4 / 32)
 char charbuf[CHAR_ROWS * CHAR_COLS];
-uint32_t colourbuf[COLOUR_PLANE_SIZE_WORDS];
+uint32_t colourbuf[3 * COLOUR_PLANE_SIZE_WORDS];
 
 static inline void set_char(uint x, uint y, char c) {
 	if (x >= CHAR_COLS || y >= CHAR_ROWS)
@@ -83,32 +80,38 @@ static inline void set_char(uint x, uint y, char c) {
 	charbuf[x + y * CHAR_COLS] = c;
 }
 
+// Pixel format RGB222
 static inline void set_colour(uint x, uint y, uint8_t fg, uint8_t bg) {
 	if (x >= CHAR_COLS || y >= CHAR_ROWS)
 		return;
 	uint char_index = x + y * CHAR_COLS;
 	uint bit_index = char_index % 8 * 4;
 	uint word_index = char_index / 8;
-	// One channel atm
-	uint32_t fg_bg_combined = (fg & 0x3) | (bg << 2 & 0xc);
-	colourbuf[word_index] = (colourbuf[word_index] & ~(0xfu << bit_index)) | (fg_bg_combined << bit_index);
+	for (int plane = 0; plane < 3; ++plane) {
+		uint32_t fg_bg_combined = (fg & 0x3) | (bg << 2 & 0xc);
+		colourbuf[word_index] = (colourbuf[word_index] & ~(0xfu << bit_index)) | (fg_bg_combined << bit_index);
+		fg >>= 2;
+		bg >>= 2;
+		word_index += COLOUR_PLANE_SIZE_WORDS;
+	}
 }
 
 void core1_main() {
 	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
-	sem_acquire_blocking(&dvi_start_sem);
 	dvi_start(&dvi0);
 	while (true) {
 		for (uint y = 0; y < FRAME_HEIGHT; ++y) {
 			uint32_t *tmdsbuf;
 			queue_remove_blocking(&dvi0.q_tmds_free, &tmdsbuf);
-			tmds_encode_font_2bpp(
-				(const uint8_t*)&charbuf[y / FONT_CHAR_HEIGHT * CHAR_COLS],
-				&colourbuf[y / FONT_CHAR_HEIGHT * (COLOUR_PLANE_SIZE_WORDS / CHAR_ROWS)],
-				tmdsbuf,
-				FRAME_WIDTH,
-				(const uint8_t*)&font_8x8[y % FONT_CHAR_HEIGHT * FONT_N_CHARS] - FONT_FIRST_ASCII
-			);
+			for (int plane = 0; plane < 3; ++plane) {
+				tmds_encode_font_2bpp(
+					(const uint8_t*)&charbuf[y / FONT_CHAR_HEIGHT * CHAR_COLS],
+					&colourbuf[y / FONT_CHAR_HEIGHT * (COLOUR_PLANE_SIZE_WORDS / CHAR_ROWS) + plane * COLOUR_PLANE_SIZE_WORDS],
+					tmdsbuf + plane * (FRAME_WIDTH / DVI_SYMBOLS_PER_WORD),
+					FRAME_WIDTH,
+					(const uint8_t*)&font_8x8[y % FONT_CHAR_HEIGHT * FONT_N_CHARS] - FONT_FIRST_ASCII
+				);
+			}
 			queue_add_blocking(&dvi0.q_tmds_valid, &tmdsbuf);
 		}
 	}
@@ -117,19 +120,8 @@ void core1_main() {
 int __not_in_flash("main") main() {
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(10);
-#ifdef RUN_FROM_CRYSTAL
-	set_sys_clock_khz(12000, true);
-#else
 	// Run system at TMDS bit clock
 	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, true);
-#endif
-
-	setup_default_uart();
-
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
-
-	printf("Configuring DVI\n");
 
 	dvi0.timing = &DVI_TIMING;
 	dvi0.ser_cfg = DEFAULT_DVI_SERIAL_CONFIG;
@@ -142,14 +134,10 @@ int __not_in_flash("main") main() {
 		}
 	}
 
-	printf("Core 1 start\n");
-	sem_init(&dvi_start_sem, 0, 1);
 	hw_set_bits(&bus_ctrl_hw->priority, BUSCTRL_BUS_PRIORITY_PROC1_BITS);
 	multicore_launch_core1(core1_main);
 
-	sem_release(&dvi_start_sem);
 	while (1)
 		__wfi();
-	__builtin_unreachable();
 }
 	
