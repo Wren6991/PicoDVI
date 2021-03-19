@@ -569,7 +569,7 @@ decl_func_y tmds_fullres_encode_loop_16bpp_leftshift_y
 	b 2f
 	.align 2
 1:
-.rept 8
+.rept 10
 	ldmia r0!, {r3, r5}
 	lsrs r4, r3, #14
 	lsls r3, #2
