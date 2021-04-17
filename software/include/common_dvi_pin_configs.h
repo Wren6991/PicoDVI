@@ -79,4 +79,13 @@ static const struct dvi_serialiser_cfg pimoroni_demo_hdmi_cfg = {
 	.invert_diffpairs = true
 };
 
+// Not HDMI Featherwing
+static const struct dvi_serialiser_cfg not_hdmi_featherwing_cfg = {
+	.pio = pio0,
+	.sm_tmds = {0, 1, 2},
+	.pins_tmds = {11, 9, 7},
+	.pins_clk = 24,
+	.invert_diffpairs = true
+};
+
 #endif
