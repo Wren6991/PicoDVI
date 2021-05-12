@@ -65,4 +65,14 @@ static const struct dvi_serialiser_cfg pico_sock_cfg = {
 	.invert_diffpairs = false
 };
 
+// The HDMI socket on Pimoroni Pico Demo HDMI
+// (we would talk about rev B if we had a rev B...)
+static const struct dvi_serialiser_cfg pimoroni_demo_hdmi_cfg = {
+	.pio = pio0,
+	.sm_tmds = {0, 1, 2},
+	.pins_tmds = {8, 10, 12},
+	.pins_clk = 6,
+	.invert_diffpairs = true
+};
+
 #endif
