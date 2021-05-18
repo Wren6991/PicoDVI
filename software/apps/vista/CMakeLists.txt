@@ -1,7 +1,3 @@
-# Replace TMDS with 10 bit UART (same baud rate):
-# add_definitions(-DDVI_SERIAL_DEBUG=1)
-# add_definitions(-DRUN_FROM_CRYSTAL)
-
 add_executable(vista
 	main.c
 )

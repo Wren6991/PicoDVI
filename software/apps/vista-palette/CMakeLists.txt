@@ -10,7 +10,7 @@ add_executable(vista-palette
 # flash using direct SSI DMA, which would trample on XIP.
 pico_set_binary_type(vista-palette copy_to_ram)
 
-pico_define_boot_stage2(vista-palette_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
+pico_define_boot_stage2(vista-palette_boot2 ${PICO_SDK_PATH}/src/rp2_common/boot_stage2/boot2_w25q080.S)
 target_compile_definitions(vista-palette_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 pico_set_boot_stage2(vista-palette vista-palette_boot2)
 
