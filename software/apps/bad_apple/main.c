@@ -34,7 +34,7 @@ int main() {
 	setup_default_uart();
 
 	dvi0.timing = &DVI_TIMING;
-	dvi0.ser_cfg = DEFAULT_DVI_SERIAL_CONFIG;
+	dvi0.ser_cfg = DVI_DEFAULT_SERIAL_CONFIG;
 	dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
 

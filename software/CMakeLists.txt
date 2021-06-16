@@ -9,11 +9,11 @@ pico_sdk_init()
 add_compile_options(-Wall)
 
 # To change the default serial config for all apps, pass e.g.
-# cmake -DDEFAULT_DVI_SERIAL_CONFIG=pimoroni_demo_hdmi_cfg ..
+# cmake -DDVI_DEFAULT_SERIAL_CONFIG=pimoroni_demo_hdmi_cfg ..
 # then rebuild.
-set(DEFAULT_DVI_SERIAL_CONFIG "pico_sock_cfg" CACHE STRING
+set(DVI_DEFAULT_SERIAL_CONFIG "pico_sock_cfg" CACHE STRING
 	"Select a default pin configuration from common_dvi_pin_configs.h")
-add_definitions(-DDEFAULT_DVI_SERIAL_CONFIG=${DEFAULT_DVI_SERIAL_CONFIG})
+add_definitions(-DDVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG})
 
 include_directories(
 	assets

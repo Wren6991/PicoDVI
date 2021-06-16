@@ -34,7 +34,7 @@ static const struct dvi_serialiser_cfg picodvi_dvi_cfg = {
 };
 ```
 
-Serial configurations for a handful of boards are listed in [common_dvi_pin_configs.h](include/common_dvi_pin_configs.h). Feel free to raise a PR to add your board to this file. All of the example apps use the `DEFAULT_DVI_SERIAL_CONFIG` from this header to select their pin configuration, which has a default value of `pico_sock_cfg`. You can pass `-DDEFAULT_DVI_SERIAL_CONFIG=some_other_board` to `cmake` to override this default, so that the example apps will be built with a different serial configuration.
+Serial configurations for a handful of boards are listed in [common_dvi_pin_configs.h](include/common_dvi_pin_configs.h). Feel free to raise a PR to add your board to this file. All of the example apps use the `DVI_DEFAULT_SERIAL_CONFIG` from this header to select their pin configuration, which has a default value of `pico_sock_cfg`. You can pass `-DDVI_DEFAULT_SERIAL_CONFIG=some_other_board` to `cmake` to override this default, so that the example apps will be built with a different serial configuration.
 
 As well as the DVI serial configuration, you may also want to set the `PICO_BOARD` flag for your target board to pick up things like UART and LED pin settings.
 

@@ -122,7 +122,7 @@ int __not_in_flash("main") main() {
 	printf("Configuring DVI\n");
 
 	dvi0.timing = &DVI_TIMING;
-	dvi0.ser_cfg = DEFAULT_DVI_SERIAL_CONFIG;
+	dvi0.ser_cfg = DVI_DEFAULT_SERIAL_CONFIG;
 	dvi0.scanline_callback = core1_scanline_callback;
 	dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 
