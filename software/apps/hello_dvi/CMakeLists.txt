@@ -8,6 +8,10 @@ add_executable(hello_dvi
 
 target_compile_options(hello_dvi PRIVATE -Wall)
 
+target_compile_definitions(hello_dvi PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
+	)
+
 target_link_libraries(hello_dvi
 	pico_stdlib
 	pico_multicore

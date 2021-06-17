@@ -8,6 +8,10 @@ add_executable(sprite_bounce
 
 target_compile_options(sprite_bounce PRIVATE -Wall)
 
+target_compile_definitions(sprite_bounce PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
+	)
+
 target_link_libraries(sprite_bounce
 	pico_stdlib
 	pico_multicore

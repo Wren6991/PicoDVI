@@ -6,6 +6,10 @@ add_executable(mandelbrot
 	main.c
 )
 
+target_compile_definitions(mandelbrot PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
+	)
+
 target_link_libraries(mandelbrot
 	pico_stdlib
 	pico_multicore

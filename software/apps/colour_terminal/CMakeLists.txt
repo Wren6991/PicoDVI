@@ -10,7 +10,10 @@ target_compile_definitions(colour_terminal PRIVATE
 
 # We have a lot in SRAM4 (particularly TMDS LUT) but don't need much stack on
 # core 1. Probably even 256 bytes would be fine.
-target_compile_definitions(colour_terminal PRIVATE PICO_CORE1_STACK_SIZE=0x200)
+target_compile_definitions(colour_terminal PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
+	PICO_CORE1_STACK_SIZE=0x200
+	)
 
 target_link_libraries(colour_terminal
 	pico_stdlib

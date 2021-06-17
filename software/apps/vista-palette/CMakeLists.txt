@@ -15,6 +15,7 @@ target_compile_definitions(vista-palette_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 pico_set_boot_stage2(vista-palette vista-palette_boot2)
 
 target_compile_definitions(vista-palette PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
 	DVI_VERTICAL_REPEAT=1
 	DVI_N_TMDS_BUFFERS=5
 	DVI_SYMBOLS_PER_WORD=2

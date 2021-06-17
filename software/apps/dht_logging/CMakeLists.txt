@@ -9,7 +9,11 @@ add_executable(dht_logging
 
 target_compile_options(dht_logging PRIVATE -Wall)
 
-target_compile_definitions(dht_logging PRIVATE DVI_VERTICAL_REPEAT=1 DVI_N_TMDS_BUFFERS=3)
+target_compile_definitions(dht_logging PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
+	DVI_VERTICAL_REPEAT=1
+	DVI_N_TMDS_BUFFERS=3
+	)
 
 
 target_link_libraries(dht_logging

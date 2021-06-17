@@ -7,6 +7,7 @@ add_executable(moon
 target_compile_options(moon PRIVATE -Wall)
 
 target_compile_definitions(moon PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
 	DVI_VERTICAL_REPEAT=1
 	DVI_N_TMDS_BUFFERS=3
 	DVI_MONOCHROME_TMDS
@@ -29,6 +30,7 @@ add_executable(moon_pio_encode
 target_compile_options(moon_pio_encode PRIVATE -Wall)
 
 target_compile_definitions(moon_pio_encode PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
 	DVI_VERTICAL_REPEAT=1
 	DVI_N_TMDS_BUFFERS=3
 	DVI_MONOCHROME_TMDS

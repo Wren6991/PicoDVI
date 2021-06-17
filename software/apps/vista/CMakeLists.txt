@@ -7,6 +7,7 @@ add_executable(vista
 pico_set_binary_type(vista copy_to_ram)
 
 target_compile_definitions(vista PRIVATE
+	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
 	DVI_VERTICAL_REPEAT=1
 	DVI_N_TMDS_BUFFERS=5
 	DVI_SYMBOLS_PER_WORD=1
