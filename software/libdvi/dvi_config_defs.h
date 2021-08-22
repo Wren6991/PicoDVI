@@ -112,6 +112,14 @@
 #define DVI_16BPP_BLUE_LSB 0
 #endif
 
+// Default 1bpp layout: bitwise little-endian, i.e. least significant bit of
+// each word is the first (leftmost) of a block of 32 pixels.
+
+// If 1, reverse the order of pixels within each byte. Order of bytes within
+// each word is still little-endian.
+#ifndef DVI_1BPP_BIT_REVERSE
+#define DVI_1BPP_BIT_REVERSE 0
+#endif
 
 // ----------------------------------------------------------------------------
 // TMDS encode controls

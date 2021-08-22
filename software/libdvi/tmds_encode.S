@@ -219,10 +219,17 @@ decl_func tmds_encode_1bpp
 	b 2f
 1:
 	ldmia r0!, {r2}
+#if !DVI_1BPP_BIT_REVERSE
 	tmds_encode_1bpp_body lsls 3  lsrs 1
 	tmds_encode_1bpp_body lsrs 5  lsrs 9
 	tmds_encode_1bpp_body lsrs 13 lsrs 17
 	tmds_encode_1bpp_body lsrs 21 lsrs 25
+#else
+	tmds_encode_1bpp_body lsrs 1   lsls 3
+	tmds_encode_1bpp_body lsrs 9   lsrs 5
+	tmds_encode_1bpp_body lsrs 17  lsrs 13
+	tmds_encode_1bpp_body lsrs 25  lsrs 21
+#endif
 2:
 	cmp r1, ip
 	blo 1b
@@ -233,6 +240,7 @@ decl_func tmds_encode_1bpp
 
 .align 2
 tmds_1bpp_table:
+#if !DVI_1BPP_BIT_REVERSE
 	.word 0x7fd00, 0x7fd00  // 0000
 	.word 0x7fe00, 0x7fd00  // 0001
 	.word 0xbfd00, 0x7fd00  // 0010
@@ -249,6 +257,24 @@ tmds_1bpp_table:
 	.word 0x7fe00, 0xbfe00  // 1101
 	.word 0xbfd00, 0xbfe00  // 1110
 	.word 0xbfe00, 0xbfe00  // 1111
+#else
+	.word 0x7fd00, 0x7fd00  // 0000
+	.word 0x7fd00, 0xbfd00  // 1000
+	.word 0x7fd00, 0x7fe00  // 0100
+	.word 0x7fd00, 0xbfe00  // 1100
+	.word 0xbfd00, 0x7fd00  // 0010
+	.word 0xbfd00, 0xbfd00  // 1010
+	.word 0xbfd00, 0x7fe00  // 0110
+	.word 0xbfd00, 0xbfe00  // 1110
+	.word 0x7fe00, 0x7fd00  // 0001
+	.word 0x7fe00, 0xbfd00  // 1001
+	.word 0x7fe00, 0x7fe00  // 0101
+	.word 0x7fe00, 0xbfe00  // 1101
+	.word 0xbfe00, 0x7fd00  // 0011
+	.word 0xbfe00, 0xbfd00  // 1011
+	.word 0xbfe00, 0x7fe00  // 0111
+	.word 0xbfe00, 0xbfe00  // 1111
+#endif
 
 
 // ----------------------------------------------------------------------------
