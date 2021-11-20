@@ -44,7 +44,7 @@
 1:
 .endm
 
-// interp0 has been set up to give the next x-ward pointer into the tileset
+// interp0 has been set up to give the next x-ward pointer into the tilemap
 // with each pop. This saves us having to remember the tilemap pointer and
 // tilemap x size mask in core registers.
 
@@ -53,7 +53,7 @@
 // r2: x0 (start pos in tile space)
 // r3: x1 (end pos in tile space, exclusive)
 
-decl_func tile_16bpp_16px_alpha_loop
+decl_func tile16_16px_alpha_loop
 	push {r4-r7, lr}
 	mov r4, r8
 	mov r5, r9
@@ -94,11 +94,11 @@ decl_func tile_16bpp_16px_alpha_loop
 	mov r8, r1
 	// dst limit pointer at end of all pixels:
 	subs r3, r2
-	lsls r4, r2, #1
+	lsls r4, r3, #1
 	add r4, r0
 	mov r9, r4
 	// dst limit pointer at end of whole tiles:
-	lsrs r4, r2, #4
+	lsrs r4, r3, #4
 	lsls r4, #5
 	add r4, r0
 	mov ip, r4
