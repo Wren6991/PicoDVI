@@ -73,7 +73,7 @@
 #define MAP_WIDTH  512
 #define MAP_HEIGHT 256
 
-#define N_CHARACTERS 70
+#define N_CHARACTERS 75
 
 typedef struct {
 	int16_t pos_x;
@@ -170,7 +170,7 @@ void render(const game_state_t *gstate) {
 		.log_size_x = 9,
 		.log_size_y = 8,
 		.tilesize = TILESIZE_16,
-		.fill_loop = (tile_loop_t)tile16_16px_alpha_loop
+		.fill_loop = (tile_loop_t)tile16_16px_loop
 	};
 
 	sprite_t sp = {

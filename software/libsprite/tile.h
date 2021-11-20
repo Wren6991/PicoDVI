@@ -40,6 +40,7 @@ typedef void (*tile16_loop_t)(uint16_t *dst, const uint16_t *tileset, uint x0, u
 typedef void (*tile8_loop_t)(uint8_t *dst, const uint8_t *tileset, uint x0, uint x1);
 
 void tile16_16px_alpha_loop(uint16_t *dst, const uint16_t *tileset, uint x0, uint x1);
+void tile16_16px_loop(uint16_t *dst, const uint16_t *tileset, uint x0, uint x1);
 
 // ----------------------------------------------------------------------------
 // Functions from tile.c
