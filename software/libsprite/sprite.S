@@ -3,6 +3,8 @@
 #include "hardware/regs/addressmap.h"
 #include "hardware/regs/sio.h"
 
+#include "sprite_asm_const.h"
+
 #define POP2_OFFS (SIO_INTERP0_POP_FULL_OFFSET - SIO_INTERP0_ACCUM0_OFFSET)
 #define CTRL0_OFFS (SIO_INTERP0_CTRL_LANE0_OFFSET - SIO_INTERP0_ACCUM0_OFFSET)
 #define INTERP1 (SIO_INTERP1_ACCUM0_OFFSET - SIO_INTERP0_ACCUM0_OFFSET)
@@ -10,15 +12,6 @@
 .syntax unified
 .cpu cortex-m0plus
 .thumb
-
-// Put every function in its own ELF section, to permit linker GC
-.macro decl_func name
-.section .time_critical.\name, "ax"
-.global \name
-.type \name,%function
-.thumb_func
-\name:
-.endm
 
 // ----------------------------------------------------------------------------
 // Colour fill
@@ -248,10 +241,6 @@ decl_func sprite_blit8
 	bhi 1b
 	bx lr
 
-// Assume RAGB2132 (so alpha is bit 5)
-
-#define ALPHA_SHIFT_8BPP 6
-
 .macro sprite_blit8_alpha_body n
 	ldrb r3, [r1, #\n]
 	lsrs r2, r3, #ALPHA_SHIFT_8BPP
@@ -333,14 +322,6 @@ decl_func sprite_blit16
 	cmp r0, ip
 	bhi 1b
 	bx lr
-
-// Assume RGAB5515 (so alpha is bit 5)
-// Note the alpha bit being in the same position as RAGB2132 is a coincidence.
-// We are just stealing an LSB such that we can treat our alpha pixels in the
-// same way as non-alpha pixels when encoding (and the co-opted channel LSB
-// always ends up being set on alpha pixels, which is pretty harmless)
-
-#define ALPHA_SHIFT_16BPP 6
 
 .macro sprite_blit16_alpha_body n
 	ldrh r3, [r1, #2*\n]
