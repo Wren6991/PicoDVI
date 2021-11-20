@@ -17,7 +17,7 @@ static inline void setup_interp_tilemap_ptrs(interp_hw_t *interp, const uint8_t 
 	interp_config c = interp_default_config();
 	interp_config_set_mask(&c, 0, x_msb);
 	interp_set_config(interp, 0, &c);
-	interp->accum[0] = x0 - 1;
+	interp->accum[0] = x0;
 	interp->base[0] = 1;
 	interp->accum[1] = 0; // necessary if ctrl is 0?
 	interp->base[1] = 0;
