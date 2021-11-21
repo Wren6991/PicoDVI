@@ -50,7 +50,7 @@
 	strh \rs, [\rd, #\dstoffs + 2]
 .endm
 
-// interp0 has been set up to give the next x-ward pointer into the tilemap
+// interp1 has been set up to give the next x-ward pointer into the tilemap
 // with each pop. This saves us having to remember the tilemap pointer and
 // tilemap x size mask in core registers.
 
@@ -61,12 +61,13 @@
 
 // Instantiated with alpha=1 and alpha=0 to get both variants of the loop.
 // Linker garbage collection ensures we only keep the versions we use.
+
 .macro tile16_16px_loop_alpha_or_nonalpha alpha
 	push {r4-r7, lr}
 	mov r4, r8
 	mov r5, r9
 	push {r4, r5}
-	ldr r7, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
+	ldr r7, =(SIO_BASE + SIO_INTERP1_ACCUM0_OFFSET)
 
 	// The main loop only handles whole tiles, so we may need to first copy
 	// individual pixels to get tile-aligned. Skip this entirely if we are

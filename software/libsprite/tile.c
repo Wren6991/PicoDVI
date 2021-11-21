@@ -19,8 +19,6 @@ static inline void setup_interp_tilemap_ptrs(interp_hw_t *interp, const uint8_t 
 	interp_set_config(interp, 0, &c);
 	interp->accum[0] = x0;
 	interp->base[0] = 1;
-	interp->accum[1] = 0; // necessary if ctrl is 0?
-	interp->base[1] = 0;
 	interp->ctrl[1] = 0;
 	interp->base[2] = (uintptr_t)row;
 }
@@ -39,10 +37,10 @@ void __ram_func(tile16)(uint16_t *scanbuf, const tilebg_t *bg, uint raster_y, ui
 	uint tile_x_at_tx0 = tx0 >> tile_log_size(bg->tilesize);
 	uint tile_x_msb = bg->log_size_x - tile_log_size(bg->tilesize) - 1;
 
-	// NOTE this clobbers interp0, currently this will cause issues if you try
-	// to run tile code and TMDS encode on the same core. Could be fixed by
-	// save/restore, using interp1 by default, etc but fine for now
-	setup_interp_tilemap_ptrs(interp0_hw, tilemap_row_ty, tile_x_at_tx0, tile_x_msb);
+	// NOTE this clobbers interp1, currently this will cause issues if you try
+	// to run tile code and certain TMDS encode loops on the same core. Could
+	// be fixed by save/restore, at the cost of some performance.
+	setup_interp_tilemap_ptrs(interp1_hw, tilemap_row_ty, tile_x_at_tx0, tile_x_msb);
 
 	// Apply intra-tile y offset in advance, since this will be the same for
 	// all pixels of all tiles we render in this call.

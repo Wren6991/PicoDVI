@@ -6,6 +6,7 @@ target_compile_options(tiles_and_sprites PRIVATE -Wall)
 
 target_compile_definitions(tiles_and_sprites PRIVATE
 	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
+	DVI_N_TMDS_BUFFERS=5
 	)
 
 target_link_libraries(tiles_and_sprites

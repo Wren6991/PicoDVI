@@ -11,6 +11,7 @@
 
 #include "dvi.h"
 #include "dvi_serialiser.h"
+#include "tmds_encode.h"
 #include "common_dvi_pin_configs.h"
 #include "sprite.h"
 #include "tile.h"
@@ -73,7 +74,7 @@
 #define MAP_WIDTH  512
 #define MAP_HEIGHT 256
 
-#define N_CHARACTERS 75
+#define N_CHARACTERS 100
 
 typedef struct {
 	int16_t pos_x;
@@ -159,9 +160,8 @@ void update(game_state_t *state) {
 	}
 }
 
-struct dvi_inst dvi0;
 
-void render(const game_state_t *gstate) {
+void render_scanline(uint16_t *pixbuf, uint y, const game_state_t *gstate) {
 	tilebg_t bg = {
 		.xscroll = gstate->cam_x,
 		.yscroll = gstate->cam_y,
@@ -178,41 +178,56 @@ void render(const game_state_t *gstate) {
 		.has_opacity_metadata = false,
 	};
 
-	for (uint y = 0; y < FRAME_HEIGHT; ++y) {
-		uint16_t *pixbuf;
-		queue_remove_blocking(&dvi0.q_colour_free, &pixbuf);
+	tile16(pixbuf, &bg, y, FRAME_WIDTH);
 
-		tile16(pixbuf, &bg, y, FRAME_WIDTH);
-
-		for (int i = 0; i < N_CHARACTERS; ++i) {
-			const character_t *ch = &gstate->chars[i];
-			sp.x = ch->pos_x - gstate->cam_x;
-			const uint16_t *basetile = (const uint16_t*)zelda_mini_plus_walk +
-				16 * 16 * (102 + (ch->dir << 2) + ch->anim_frame);
-			for (int tile = 0; tile < ch->ntiles; ++tile) {
-				sp.y = ch->pos_y - gstate->cam_y + tile * 16;
-				sp.img = basetile + tile * ch->tilestride * 16 * 16;
-				sprite_sprite16(pixbuf, &sp, y, FRAME_WIDTH);
-			}
+	for (int i = 0; i < N_CHARACTERS; ++i) {
+		const character_t *ch = &gstate->chars[i];
+		sp.x = ch->pos_x - gstate->cam_x;
+		const uint16_t *basetile = (const uint16_t*)zelda_mini_plus_walk +
+			16 * 16 * (102 + (ch->dir << 2) + ch->anim_frame);
+		for (int tile = 0; tile < ch->ntiles; ++tile) {
+			sp.y = ch->pos_y - gstate->cam_y + tile * 16;
+			sp.img = basetile + tile * ch->tilestride * 16 * 16;
+			sprite_sprite16(pixbuf, &sp, y, FRAME_WIDTH);
 		}
-
-		queue_add_blocking(&dvi0.q_colour_valid, &pixbuf);
 	}
 }
 
 // ----------------------------------------------------------------------------
 // DVI setup & launch
 
-#define N_SCANLINE_BUFFERS 4
-uint16_t static_scanbuf[N_SCANLINE_BUFFERS][FRAME_WIDTH];
+struct dvi_inst dvi0;
+game_state_t state;
+
+uint16_t __scratch_y("render") __attribute__((aligned(4))) core0_scanbuf[FRAME_WIDTH];
+uint16_t __scratch_x("render") __attribute__((aligned(4))) core1_scanbuf[FRAME_WIDTH];
+
+// - Core 0 pops two TMDS buffers
+// - Passes one to core 1
+// - Renders own buffer and pushes to DVI queue  <- core 1 waits here before starting DVI
+// - Retrieves core 1's TMDS buffer and pushes that to DVI queue as well
+
+void encode_scanline(uint16_t *pixbuf, uint32_t *tmdsbuf) {
+	uint pixwidth = dvi0.timing->h_active_pixels;
+	uint words_per_channel = pixwidth / DVI_SYMBOLS_PER_WORD;
+	tmds_encode_data_channel_16bpp((uint32_t*)pixbuf, tmdsbuf + 0 * words_per_channel, pixwidth / 2, DVI_16BPP_BLUE_MSB,  DVI_16BPP_BLUE_LSB );
+	tmds_encode_data_channel_16bpp((uint32_t*)pixbuf, tmdsbuf + 1 * words_per_channel, pixwidth / 2, DVI_16BPP_GREEN_MSB, DVI_16BPP_GREEN_LSB);
+	tmds_encode_data_channel_16bpp((uint32_t*)pixbuf, tmdsbuf + 2 * words_per_channel, pixwidth / 2, DVI_16BPP_RED_MSB,   DVI_16BPP_RED_LSB  );
+}
 
 void core1_main() {
 	dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
-	while (queue_is_empty(&dvi0.q_colour_valid))
+	while (queue_is_empty(&dvi0.q_tmds_valid))
 		__wfe();
 	dvi_start(&dvi0);
-	dvi_scanbuf_main_16bpp(&dvi0);
-	__builtin_unreachable();
+	while (1) {
+		for (uint y = 1; y < FRAME_HEIGHT; y += 2) {
+			render_scanline(core1_scanbuf, y, &state);
+			uint32_t *tmdsbuf = (uint32_t*)multicore_fifo_pop_blocking();
+			encode_scanline(core1_scanbuf, tmdsbuf);
+			multicore_fifo_push_blocking((uintptr_t)tmdsbuf);
+		}
+	}
 }
 
 int main() {
@@ -234,17 +249,20 @@ int main() {
 	printf("Core 1 start\n");
 	multicore_launch_core1(core1_main);
 
-	printf("Allocating scanline buffers\n");
-	for (int i = 0; i < N_SCANLINE_BUFFERS; ++i) {
-		void *bufptr = &static_scanbuf[i];
-		queue_add_blocking((void*)&dvi0.q_colour_free, &bufptr);
-	}
-
 	printf("Start rendering\n");
-	game_state_t state;
 	game_init(&state);
 	while (1) {
-		render(&state);
+		for (uint y = 0; y < FRAME_HEIGHT; y += 2) {
+			uint32_t *tmds0, *tmds1;
+			queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmds0);
+			queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmds1);
+			multicore_fifo_push_blocking((uintptr_t)tmds1);
+			render_scanline(core0_scanbuf, y, &state);
+			encode_scanline(core0_scanbuf, tmds0);
+			queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmds0);
+			tmds1 = (uint32_t*)multicore_fifo_pop_blocking();
+			queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmds1);
+		}
 		update(&state);
 	}
 
