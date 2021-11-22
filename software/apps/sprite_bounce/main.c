@@ -64,7 +64,7 @@
 #error "Select a video mode!"
 #endif
 
-#define N_BERRIES 50
+#define N_BERRIES 65
 #define LED_PIN 21
 
 struct dvi_inst dvi0;

@@ -197,15 +197,13 @@ decl_func sprite_fill16
 // r2: pixel count
 //
 
-// Unrolled loop body with an initial computed branch. Note we can go much
-// faster if r0 and r1 are co-aligned, but it's not all that helpful to have a
-// 1 in 4 chance of being really fast when minimising worst-case scanline time
+// Unrolled loop body with an initial computed branch.
 
 decl_func sprite_blit8
 	mov ip, r0
 	lsrs r3, r2, #3
 	lsls r3, #3
-	eors r2, r3   // r2 = pixels % 8, r3 = pixels = pixels % 8
+	eors r2, r3   // r2 = pixels % 8, r3 = pixels - pixels % 8
 
 	add r0, r3
 	add r1, r3
@@ -282,45 +280,65 @@ decl_func sprite_blit8_alpha
 	bx lr
 
 
+.macro storew_alignh rd ra offs
+	strh \rd, [\ra, #\offs]
+	lsrs \rd, #16
+	strh \rd, [\ra, #\offs + 2]
+.endm
+
 decl_func sprite_blit16
-	mov ip, r0
-	lsrs r3, r2, #3
-	lsls r3, #3
-	eors r2, r3   // r2 = pixels % 8, r3 = pixels = pixels % 8
-
-	lsls r3, #1
-	add r0, r3
-	add r1, r3
-
-	adr r3, 2f
-	lsls r2, #2
-	subs r3, r2
-	adds r3, #1 // thumb bit >:(
-	bx r3
-
-.align 2
+	// Force source pointer to be word-aligned
+	lsrs r3, r1, #2
+	bcc 1f
+	ldrh r3, [r1]
+	strh r3, [r0]
+	adds r0, #2
+	adds r1, #2
+	subs r2, #1
 1:
-	subs r0, #16
-	subs r1, #16
-	ldrh r3, [r1, #14]
-	strh r3, [r0, #14]
-	ldrh r3, [r1, #12]
-	strh r3, [r0, #12]
-	ldrh r3, [r1, #10]
-	strh r3, [r0, #10]
-	ldrh r3, [r1, #8]
-	strh r3, [r0, #8]
-	ldrh r3, [r1, #6]
-	strh r3, [r0, #6]
-	ldrh r3, [r1, #4]
-	strh r3, [r0, #4]
-	ldrh r3, [r1, #2]
-	strh r3, [r0, #2]
-	ldrh r3, [r1, #0]
-	strh r3, [r0, #0]
+	// Each loop is 8 pixels. Place limit pointer at 16 bytes before
+	// end, loop until past it. There will be 0 to 7 pixels remaining.
+	lsls r2, #1
+	adds r2, r0
+	subs r2, #16
+	mov ip, r2
+	b 2f
+1:
+	ldmia r1!, {r2, r3}
+	storew_alignh r2, r0, 0
+	storew_alignh r3, r0, 4
+	ldmia r1!, {r2, r3}
+	storew_alignh r2, r0, 8
+	storew_alignh r3, r0, 12
+	adds r0, #16
 2:
 	cmp r0, ip
-	bhi 1b
+	bls 1b
+
+	mov r2, ip
+	subs r2, r0
+	// At least 4 pixels?
+	lsls r2, #29
+	bcc 1f
+	ldmia r1!, {r3}
+	storew_alignh r3, r0, 0
+	ldmia r1!, {r3}
+	storew_alignh r3, r0, 4
+	adds r0, #8
+1:
+	// At least 2 pixels?
+	lsls r2, #1
+	bcc 1f
+	ldmia r1!, {r3}
+	storew_alignh r3, r0, 0
+	adds r0, #4
+1:
+	// One more pixel?
+	lsls r2, #1
+	bcc 1f
+	ldrh r3, [r1]
+	strh r3, [r0]
+1:
 	bx lr
 
 .macro sprite_blit16_alpha_body n
