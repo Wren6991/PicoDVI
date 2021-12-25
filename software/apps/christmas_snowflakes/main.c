@@ -20,7 +20,7 @@
 
 #define SNOWFLAKE_SIZE 64
 #define N_SNOWFLAKE_IMAGES 8
-#define N_SPRITES 9
+#define N_SPRITES 18
 
 #define RED_MASK 0xf800u
 #define GREEN_MASK 0x07e0u
@@ -55,12 +55,14 @@ static inline uint16_t rgb565_lerp(uint32_t c0, uint32_t c1, uint alpha) {
 }
 
 static inline uint16_t rgb565_lerp_white(uint32_t c0, uint alpha) {
-	alpha = 256 - alpha;
+	// Note alpha is preinverted (or you can think of this as "lerp from white")
+	alpha += 1;
+	// Since alpha is only 6 bits, we can combine the red and blue operations
+	// into 1, since the zeroes in the green region break the carries.
 	c0 = ~c0;
 	c0 =
-		(((c0 & RED_MASK  ) * alpha >> 8) & RED_MASK  ) |
-		(((c0 & GREEN_MASK) * alpha >> 8) & GREEN_MASK) |
-		(((c0 & BLUE_MASK ) * alpha >> 8) & BLUE_MASK );
+		(((c0 & (RED_MASK | BLUE_MASK)) * alpha >> 6) & (RED_MASK | BLUE_MASK)) |
+		(((c0 & GREEN_MASK            ) * alpha >> 6) & GREEN_MASK            );
 	return ~c0;
 }
 
@@ -122,6 +124,7 @@ void __scratch_x("render") render_scanline(uint16_t *scanbuf, uint raster_y) {
 		if (i >= SNOWFLAKE_SIZE)
 			continue;
 
+		#pragma GCC unroll 8
 		for (int j = 0; j < SNOWFLAKE_SIZE; ++j) {
 			int x = (int)sprites[s].x + j;
 			if (x < 0)
