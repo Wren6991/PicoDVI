@@ -3,7 +3,8 @@
 #include "PicoDVI.h"
 #include "pico/multicore.h"
 
-PicoDVI::PicoDVI(uint16_t w, uint16_t h, vreg_voltage v, const struct dvi_timing &t, const struct dvi_serialiser_cfg &c) {
+PicoDVI::PicoDVI(uint16_t w, uint16_t h, vreg_voltage v, const struct dvi_timing &t, const struct dvi_serialiser_cfg &c) : GFXcanvas16(w, h) {
+  framebuf = getBuffer();
   framebuf_width = w;
   framebuf_height = h;
   timing = &t;
@@ -12,7 +13,7 @@ PicoDVI::PicoDVI(uint16_t w, uint16_t h, vreg_voltage v, const struct dvi_timing
 }
 
 PicoDVI::~PicoDVI(void) {
-  if (framebuf) free(framebuf);
+//  if (framebuf) free(framebuf);
 }
 
 static struct dvi_inst *dviptr = NULL;
@@ -40,7 +41,8 @@ void core1_scanline_callback() {
 }
 
 bool PicoDVI::begin(void) {
-  if ((framebuf = (uint16_t *)calloc(framebuf_width * framebuf_height, sizeof(uint16_t)))) {
+//  if ((framebuf = (uint16_t *)calloc(framebuf_width * framebuf_height, sizeof(uint16_t)))) {
+  if (1) {
     vreg_set_voltage(voltage);
     sleep_ms(10);
 #ifdef RUN_FROM_CRYSTAL
@@ -65,10 +67,6 @@ bool PicoDVI::begin(void) {
     fbw = framebuf_width;
     fbh = framebuf_height;
     waiting = false; // Set core 1 free
-
-    for (int i=10; i<20; i++) {
-        framebuf[i * framebuf_width + i] = 0xF800;
-    }
 
     return true;
   }
