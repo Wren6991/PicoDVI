@@ -18,13 +18,10 @@ PicoDVI::~PicoDVI(void) {
 static struct dvi_inst *dviptr = NULL;
 static uint16_t *fb = NULL;
 static uint16_t fbw = 0, fbh = 0;
+static volatile bool waiting = true;
 
-static volatile bool foo = true;
-
-//void core1_main() {
 void setup1() {
-    while(foo); // Wait for begin() to do its thing
-
+    while(waiting); // Wait for begin() to do its thing
     dvi_register_irqs_this_core(dviptr, DMA_IRQ_0);
     dvi_start(dviptr);
     dvi_scanbuf_main_16bpp(dviptr);
@@ -41,7 +38,6 @@ void core1_scanline_callback() {
     queue_add_blocking_u32(&dviptr->q_colour_valid, &bufptr);
     scanline = (scanline + 1) % fbh;
 }
-
 
 bool PicoDVI::begin(void) {
   if ((framebuf = (uint16_t *)calloc(framebuf_width * framebuf_height, sizeof(uint16_t)))) {
@@ -64,15 +60,11 @@ bool PicoDVI::begin(void) {
     bufptr += framebuf_width;
     queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);
 
-#if 0
-// This first line is where things go south
-    *dviptr = dvi0;
+    dviptr = &dvi0;
     fb = framebuf;
     fbw = framebuf_width;
     fbh = framebuf_height;
-//    multicore_launch_core1(core1_main);
-foo = false; // Set core 1 free
-#endif
+    waiting = false; // Set core 1 free
 
     for (int i=10; i<20; i++) {
         framebuf[i * framebuf_width + i] = 0xF800;
