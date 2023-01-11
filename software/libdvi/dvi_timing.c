@@ -226,11 +226,7 @@ void __dvi_func(dvi_timing_state_advance)(const struct dvi_timing *t, struct dvi
 		    (s->v_state == DVI_STATE_BACK_PORCH && s->v_ctr == t->v_back_porch) ||
 		    (s->v_state == DVI_STATE_ACTIVE && s->v_ctr == t->v_active_lines)) {
 
-#if defined(ARDUINO)
-			s->v_state = (dvi_line_state)(((int)s->v_state + 1) % (int)DVI_STATE_COUNT);
-#else
 			s->v_state = (s->v_state + 1) % DVI_STATE_COUNT;
-#endif
 			s->v_ctr = 0;
 		}
 }
