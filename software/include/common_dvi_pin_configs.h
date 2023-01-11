@@ -5,7 +5,11 @@
 // developing on. It's not a particularly important file -- just saves some
 // copy + paste.
 
+#if defined(ARDUINO)
+#include "../libdvi/dvi_serialiser.h"
+#else
 #include "dvi_serialiser.h"
+#endif
 
 #ifndef DVI_DEFAULT_SERIAL_CONFIG
 #define DVI_DEFAULT_SERIAL_CONFIG pico_sock_cfg
