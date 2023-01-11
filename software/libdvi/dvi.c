@@ -37,7 +37,11 @@ void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_col
 
 	dvi_setup_scanline_for_vblank(inst->timing, inst->dma_cfg, true, &inst->dma_list_vblank_sync);
 	dvi_setup_scanline_for_vblank(inst->timing, inst->dma_cfg, false, &inst->dma_list_vblank_nosync);
+#if defined(ARDUINO)
+	dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, (uint32_t*)SRAM_BASE, &inst->dma_list_active);
+#else
 	dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, (void*)SRAM_BASE, &inst->dma_list_active);
+#endif
 	dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_error);
 
 	for (int i = 0; i < DVI_N_TMDS_BUFFERS; ++i) {

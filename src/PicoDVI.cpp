@@ -1,6 +1,12 @@
-#include "PicoDVI.h"
 #include <stdlib.h>
 #include <string.h>
+#include "PicoDVI.h"
+
+#define PICO_COPY_TO_RAM 1
+#include "../software/libdvi/dvi.c"
+#undef __dvi_func // Avoid redefine warning
+#include "../software/libdvi/dvi_timing.c"
+#include "../software/libdvi/dvi_serialiser.c"
 
 PicoDVI::PicoDVI(uint16_t w, uint16_t h, vreg_voltage v, const struct dvi_timing &t, const struct dvi_serialiser_cfg &c) {
   framebuf_width = w;
@@ -30,8 +36,8 @@ bool PicoDVI::begin(void) {
     memcpy(&dvi0.ser_cfg, cfg, sizeof dvi0.ser_cfg);
 #if 0
     dvi0.scanline_callback = core1_scanline_callback;
-    dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 #endif
+    dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 
     return true;
   }

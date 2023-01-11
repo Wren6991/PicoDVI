@@ -2,12 +2,8 @@
 
 #include "pico/stdlib.h"   // In Pico SDK
 #include "hardware/vreg.h" // In Pico SDK
-#include "libdvi/dvi.h"    // Requires soft link in src to ../software/libdvi
-#include "libdvi/dvi_timing.h"
+#include "../software/libdvi/dvi.h"
 #include "../software/include/common_dvi_pin_configs.h"
-// Also, one must build PicoDVI via the usual route (mkdir build & cmake, etc.)
-// and copy dvi_serialiser.pio.h to libdvi. 'build' is in .gitignore and
-// doesn't get included w/push.
 
 class PicoDVI {
 public:
