@@ -5,7 +5,7 @@
 
 PicoDVI display(320, 240, VREG_VOLTAGE_1_20, dvi_timing_640x480p_60hz, pimoroni_demo_hdmi_cfg);
 
-#define PAUSE 3000  // Delay (millisecondss) between examples
+#define PAUSE 2000  // Delay (millisecondss) between examples
 uint8_t rotate = 0; // Current screen orientation (0-3)
 
 #if !defined(CORNER_RADIUS)

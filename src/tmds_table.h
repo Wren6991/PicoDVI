@@ -1,1 +1,0 @@
-../software/libdvi/tmds_table.h

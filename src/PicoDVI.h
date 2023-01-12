@@ -2,7 +2,7 @@
 
 #include "pico/stdlib.h"   // In Pico SDK
 #include "hardware/vreg.h" // In Pico SDK
-#include "dvi.h"
+#include "libdvi/dvi.h"
 #include "../software/include/common_dvi_pin_configs.h"
 #include <Adafruit_GFX.h>
 
