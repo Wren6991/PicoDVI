@@ -20,7 +20,7 @@ void PicoDVI::_setup(void) {
   dvi_scanbuf_main_16bpp(&dvi0);
 }
 
-static void core1_scanline_callback() { dviptr->_scanline_callback(); }
+static void core1_scanline_callback(void) { dviptr->_scanline_callback(); }
 
 void PicoDVI::_scanline_callback(void) {
   // Discard any scanline pointers passed back
