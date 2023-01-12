@@ -1,3 +1,6 @@
+Special Fork of PicoDVI for RP2040 Arduino Philhower Core + Adafruit_GFX
+========================================================================
+
 Bitbanged DVI on the RP2040 Microcontroller
 ===========================================
 
