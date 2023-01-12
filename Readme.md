@@ -1,5 +1,33 @@
-Special Fork of PicoDVI for RP2040 Arduino Philhower Core + Adafruit_GFX
-========================================================================
+Fork of PicoDVI for Adafruit_GFX compatibility
+==============================================
+
+At the moment this implements a color framebuffer to which Adafruit_GFX
+drawing operations can be made. Other framebuffer types (8-bit, 1-bit) might
+get added later, but not every permutation PicoDVI is capable of.
+
+Requires Earle Philhower III RP2040 core (not the "official" Arduino core).
+Oddly, some resolutions may require slightly higher over-voltage settings vs.
+equivalent Pico DVI projects. Just speculating there might be a slightly
+higher workload when built in Arduino environment, due to timekeeping
+interrupts, Serial and any other background stuff.
+
+Changes vs main PicoDVI repo:
+- Add 'library.properties', 'src' and 'examples' directories per Arduino
+requirements.
+- software/libdvi is soft-linked into src so Arduino IDE can compile these
+parts.
+- The file dvi_serialiser.pio.h, normally not part of the distribution and
+generated during the Pico SDK cmake/make process, is provided here for
+Arduino build to work. If any changes are made in dvi_serialiser.pio (either
+here or by bringing in updates from upstream code), this header will need to
+be regenerated.
+
+Roadmap:
+- Other framebuffer depths & sizes.
+- Might split out the PicoDVI-to-Arduino wrapper elements from the GFX parts
+so lower-level access (scanline callbacks, etc.) can be done in Arduino, to
+handle any other display permutations and perhaps port over some of PicoDVI's
+Pico SDK examples.
 
 Bitbanged DVI on the RP2040 Microcontroller
 ===========================================
