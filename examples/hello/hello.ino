@@ -4,6 +4,8 @@
 #include <PicoDVI.h>
 
 PicoDVI display(320, 240, VREG_VOLTAGE_1_20, dvi_timing_640x480p_60hz, pimoroni_demo_hdmi_cfg);
+// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
+//PicoDVI display(400, 240, VREG_VOLTAGE_1_30, dvi_timing_800x480p_60hz, pimoroni_demo_hdmi_cfg);
 
 void setup() {
   Serial.begin(115200);
