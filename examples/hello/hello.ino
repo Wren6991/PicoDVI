@@ -5,13 +5,6 @@
 
 PicoDVI display(320, 240, VREG_VOLTAGE_1_20, dvi_timing_640x480p_60hz, pimoroni_demo_hdmi_cfg);
 
-#define PAUSE 2000  // Delay (milliseconds) between examples
-uint8_t rotate = 0; // Current screen orientation (0-3)
-
-#if !defined(CORNER_RADIUS)
-#define CORNER_RADIUS 0
-#endif
-
 void setup() {
   Serial.begin(115200);
   //while(!Serial);
@@ -20,11 +13,17 @@ void setup() {
 }
 
 #if 0
-void loop() {
-  dvi.drawLine(random(320), random(240), random(320), random(240), random(65536));
-}
-#endif
 
+void loop() {
+  // Random lines
+  display.drawLine(random(display.width()), random(display.height()), random(display.width()), random(display.height()), random(65536));
+}
+
+#else
+
+#define PAUSE 2000  // Delay (milliseconds) between examples
+uint8_t rotate = 0; // Current screen orientation (0-3)
+#define CORNER_RADIUS 0
 
 void loop() {
   // Each of these functions demonstrates a different Adafruit_GFX concept:
@@ -619,3 +618,5 @@ void show_canvas() {
   // Because canvas object was declared locally to this function, it's freed
   // automatically when the function returns; no explicit delete needed.
 } // END CANVAS EXAMPLE
+
+#endif

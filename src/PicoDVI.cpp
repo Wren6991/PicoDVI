@@ -43,13 +43,9 @@ PicoDVI::~PicoDVI(void) { dviptr = NULL; }
 bool PicoDVI::begin(void) {
   if (getBuffer()) { // Canvas alloc'd OK?
     vreg_set_voltage(voltage);
-    sleep_ms(10);
-#ifdef RUN_FROM_CRYSTAL
-    set_sys_clock_khz(12000, true);
-#else
+    delay(10);
     // Run system at TMDS bit clock
     set_sys_clock_khz(timing->bit_clk_khz, true);
-#endif
 
     dvi0.timing = timing;
     memcpy(&dvi0.ser_cfg, cfg, sizeof dvi0.ser_cfg);
