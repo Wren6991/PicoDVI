@@ -5,7 +5,7 @@
 
 PicoDVI display(320, 240, VREG_VOLTAGE_1_20, dvi_timing_640x480p_60hz, pimoroni_demo_hdmi_cfg);
 
-#define PAUSE 2000  // Delay (millisecondss) between examples
+#define PAUSE 2000  // Delay (milliseconds) between examples
 uint8_t rotate = 0; // Current screen orientation (0-3)
 
 #if !defined(CORNER_RADIUS)
@@ -15,14 +15,12 @@ uint8_t rotate = 0; // Current screen orientation (0-3)
 void setup() {
   Serial.begin(115200);
   //while(!Serial);
-  Serial.println("A");
-  display.begin();
-  Serial.println("B");
+  bool status = display.begin();
+  Serial.println(status);
 }
 
 #if 0
 void loop() {
-  Serial.println("C");
   dvi.drawLine(random(320), random(240), random(320), random(240), random(65536));
 }
 #endif
