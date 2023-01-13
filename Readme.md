@@ -3,7 +3,7 @@ Fork of PicoDVI for Adafruit_GFX compatibility
 
 At the moment this implements a 16-bit color framebuffer to which Adafruit_GFX
 drawing operations can be made. Other framebuffer types (8-bit, 1-bit) might
-get added later, but not every permutation PicoDVI is capable of.
+get added later, but probably not every permutation PicoDVI is capable of.
 
 Requires Earle Philhower III RP2040 Arduino core (not the "official" Arduino
 RP2040 core). Oddly, some resolutions may require slightly higher over-voltage
@@ -28,10 +28,8 @@ like it for both Pico SDK and Arduino IDE use from a single repo.
 
 Roadmap:
 - Other GFX-compatible framebuffer depths & sizes.
-- Might split out the PicoDVI-to-Arduino wrapper elements from the GFX parts
-so lower-level access (scanline callbacks, etc.) can be done in Arduino, to
-handle any other display permutations and perhaps port over some of PicoDVI's
-Pico SDK examples (more soft-links, e.g. libsprite, might be needed).
+- Perhaps some non-GFX modes to bring over some of the Pico SDK examples in
+an Arduino context.
 
 Bitbanged DVI on the RP2040 Microcontroller
 ===========================================

@@ -6,24 +6,34 @@
 #include "pico/stdlib.h" // In Pico SDK
 #include <Adafruit_GFX.h>
 
-class PicoDVI : public GFXcanvas16 {
+class PicoDVI {
 public:
-  PicoDVI(uint16_t w, uint16_t h, vreg_voltage v, const struct dvi_timing &t,
-          const struct dvi_serialiser_cfg &c);
+  PicoDVI(const struct dvi_timing &t = dvi_timing_640x480p_60hz,
+      vreg_voltage v = VREG_VOLTAGE_1_10,
+      const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
   ~PicoDVI(void);
+  void _setup(void);
+
+protected:
+  void begin(void);
+  vreg_voltage voltage;
+  struct dvi_inst dvi0;
+  void (*mainloop)(dvi_inst *) = NULL;
+};
+
+class DVIGFX16 : public PicoDVI, public GFXcanvas16 {
+public:
+  DVIGFX16(const uint16_t w = 320, const uint16_t h = 240,
+           const struct dvi_timing &t = dvi_timing_640x480p_60hz,
+           vreg_voltage v = VREG_VOLTAGE_1_10,
+           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  ~DVIGFX16(void);
   bool begin(void);
   uint16_t color565(uint8_t red, uint8_t green, uint8_t blue) {
     return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3);
   }
-
-  // These functions are necessary to lib but can't be private/protected.
-  // DO NOT CALL these functions in user code! Pretend they're not here.
-  void _setup(void);
   void _scanline_callback(void);
 
 protected:
-  struct dvi_inst dvi0;
-  const struct dvi_timing *timing;
-  vreg_voltage voltage;
-  const struct dvi_serialiser_cfg *cfg;
+  uint16_t scanline = 2; // First 2 scanlines are set up before DVI start
 };

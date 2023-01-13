@@ -1,64 +1,83 @@
 #include "PicoDVI.h"
 
-// Some elements of the PicoDVI object must be accessed in interrupts or
-// outside the class context, so a pointer to the active PicoDVI object is
-// kept. This does mean only one instance can be active, but that's the
-// typical use case anyway so we should be OK.
-static PicoDVI *dviptr = NULL;
+// PicoDVI class encapsulates some of the libdvi functionality -------------
+// Subclasses then implement specific display types.
+
+static PicoDVI *dviptr = NULL; // For C access to active C++ object
 static volatile bool wait_begin = true;
 
-// This runs at startup on core 1
-void setup1() {
+// Runs on core 1 on startup
+void setup1(void) {
   while (wait_begin)
-    ; // Wait for PicoDVI::begin() to do its thing
+    ; // Wait for DVIGFX*::begin() to do its thing on core 0
   dviptr->_setup();
 }
 
+// Runs on core 1 after wait_begin released
 void PicoDVI::_setup(void) {
   dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
   dvi_start(&dvi0);
-  dvi_scanbuf_main_16bpp(&dvi0);
+  (*mainloop)(&dvi0);
 }
 
-static void core1_scanline_callback(void) { dviptr->_scanline_callback(); }
+PicoDVI::PicoDVI(const struct dvi_timing &t, vreg_voltage v,
+         const struct dvi_serialiser_cfg &c)
+    : voltage(v) {
+  dvi0.timing = &t;
+  memcpy(&dvi0.ser_cfg, &c, sizeof dvi0.ser_cfg);
+};
 
-void PicoDVI::_scanline_callback(void) {
+PicoDVI::~PicoDVI(void) {
+  dviptr = NULL;
+  wait_begin = true;
+}
+
+void PicoDVI::begin(void) {
+  dviptr = this;
+  vreg_set_voltage(voltage);
+  delay(10);
+  set_sys_clock_khz(dvi0.timing->bit_clk_khz, true); // Run at TMDS bit clock
+  dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
+}
+
+// DVIGFX16 class provides GFX-compatible 16-bit color framebuffer ---------
+
+static void *gfxptr = NULL; // For C access to active C++ object
+
+DVIGFX16::DVIGFX16(const uint16_t w, const uint16_t h,
+                   const struct dvi_timing &t, vreg_voltage v,
+                   const struct dvi_serialiser_cfg &c)
+    : PicoDVI(t, v, c), GFXcanvas16(w, h) {}
+
+static void scanline_callback_GFX16(void) {
+  ((DVIGFX16 *)gfxptr)->_scanline_callback();
+}
+
+DVIGFX16::~DVIGFX16(void) {
+  gfxptr = NULL;
+}
+
+void DVIGFX16::_scanline_callback(void) {
   // Discard any scanline pointers passed back
   uint16_t *bufptr;
   while (queue_try_remove_u32(&dvi0.q_colour_free, &bufptr))
     ;
-  // Note first two scanlines are pushed before DVI start
-  static uint scanline = 2;
   bufptr = &getBuffer()[WIDTH * scanline];
   queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);
   scanline = (scanline + 1) % HEIGHT;
 }
 
-PicoDVI::PicoDVI(uint16_t w, uint16_t h, vreg_voltage v,
-                 const struct dvi_timing &t, const struct dvi_serialiser_cfg &c)
-    : GFXcanvas16(w, h), timing(&t), voltage(v), cfg(&c) {}
-
-PicoDVI::~PicoDVI(void) { dviptr = NULL; }
-
-bool PicoDVI::begin(void) {
-  if (getBuffer()) { // Canvas alloc'd OK?
-    vreg_set_voltage(voltage);
-    delay(10);
-    set_sys_clock_khz(timing->bit_clk_khz, true); // Run at TMDS bit clock
-
-    dvi0.timing = timing;
-    memcpy(&dvi0.ser_cfg, cfg, sizeof dvi0.ser_cfg);
-    dvi0.scanline_callback = core1_scanline_callback;
-    dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
-
-    uint16_t *bufptr = getBuffer();
+bool DVIGFX16::begin(void) {
+  uint16_t *bufptr = getBuffer();
+  if ((bufptr)) {
+    gfxptr = this;
+    mainloop = dvi_scanbuf_main_16bpp; // in libdvi
+    dvi0.scanline_callback = scanline_callback_GFX16;
+    PicoDVI::begin();
     queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);
     bufptr += WIDTH;
     queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);
-
-    dviptr = this;
-    wait_begin = false; // Set core 1 free
-
+    wait_begin = false; // Set core 1 in motion
     return true;
   }
   return false;
