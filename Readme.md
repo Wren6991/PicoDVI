@@ -1,35 +1,33 @@
-Fork of PicoDVI for Adafruit_GFX compatibility
-==============================================
+PicoDVI - Adafruit Fork for Arduino IDE + Adafruit_GFX compatibility
+====================================================================
+(Original Readme content follows later)
 
-At the moment this implements a 16-bit color framebuffer to which Adafruit_GFX
+At present this implements a 16-bit color framebuffer to which Adafruit_GFX
 drawing operations can be made. Other framebuffer types (8-bit, 1-bit) might
 get added later, but probably not every permutation PicoDVI is capable of.
 
 Requires Earle Philhower III RP2040 Arduino core (not the "official" Arduino
-RP2040 core). Oddly, some resolutions may require slightly higher over-voltage
+RP2040 core). Some resolutions may require slightly higher over-voltage
 settings vs. equivalent Pico SDK-built projects. Just speculating there might
 be a slightly higher workload when built in Arduino environment, due to
 timekeeping interrupts, Serial and any other background stuff.
 
 Changes vs main PicoDVI repo:
-- Add 'library.properties' and 'src', 'examples' directories per Arduino
+- Add library.properties file, src and examples directories per Arduino
 requirements.
 - software/libdvi is soft-linked into src so Arduino IDE can compile these
 parts.
 - The file dvi_serialiser.pio.h, normally not part of the distribution and
-generated during the Pico SDK cmake/make process, is provided here for
-Arduino build to work. If any changes are made in dvi_serialiser.pio (either
-here or by bringing in updates from upstream code), this header will need to
-be regenerated.
+generated during the Pico SDK build process, is provided here for Arduino
+build to work. If any changes are made in dvi_serialiser.pio (either here
+or by bringing in updates from upstream code), this header will need to be
+regenerated.
 
 All files from the PicoDVI repo are kept even if not used in this build
-(e.g. 'apps' directory), in case maintainer wants to merge this or something
-like it for both Pico SDK and Arduino IDE use from a single repo.
+(e.g. apps and assets directories, among others) so same repo can still be
+used via Pico SDK if desired.
 
-Roadmap:
-- Other GFX-compatible framebuffer depths & sizes.
-- Perhaps some non-GFX modes to bring over some of the Pico SDK examples in
-an Arduino context.
+Original Readme content:
 
 Bitbanged DVI on the RP2040 Microcontroller
 ===========================================
