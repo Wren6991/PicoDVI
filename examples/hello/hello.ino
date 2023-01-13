@@ -30,12 +30,7 @@ void loop() {
   show_char_map();
   show_custom_text();
   show_bitmap();
-#if !defined(AVR)
-  // The full set of examples (plus the custom font) won't fit on an 8-bit
-  // Arduino, something's got to go. You can try out this one IF the other
-  // examples are disabled instead.
   show_canvas();
-#endif
 
   if (++rotate > 3) rotate = 0; // Cycle through screen rotations 0-3
   display.setRotation(rotate);  // Takes effect on next drawing command
