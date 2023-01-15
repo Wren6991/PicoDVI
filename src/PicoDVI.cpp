@@ -94,17 +94,17 @@ bool DVIGFX16::begin(void) {
 // scanlines is weird(tm) though. Rather than a separate malloc (which
 // creates a nasty can of worms if that fails after a successful framebuffer
 // allocation...unlikely but not impossible), the framebuffer size is
-// tweaked so that W*H is always an even number, plus 4 extra 8-bit
-// scanlines are added: thus two 16-bit scanlines, word-aligned. That extra
-// memory is for us, but allocated by GFX as part of the framebuffer all at
-// once. On calling begin(), the HEIGHT value is de-tweaked to the original
-// value so clipping won't allow any drawing operations to spill into the
-// 16-bit scanlines.
+// tweaked so that W*H is always an even number, plus 4 extra rows are
+// added: thus two 16-bit scanlines, word-aligned. That extra memory is for
+// us, but allocated by GFX as part of the framebuffer all at once. The
+// HEIGHT value is de-tweaked to the original value so clipping won't allow
+// any drawing operations to spill into the 16-bit scanlines.
 
 DVIGFX8::DVIGFX8(const uint16_t w, const uint16_t h,
                  const struct dvi_timing &t, vreg_voltage v,
                  const struct dvi_serialiser_cfg &c)
     : PicoDVI(t, v, c), GFXcanvas8(w, ((h + 1) & ~1) + 4) {
+  HEIGHT = _height = h;
 }
 
 DVIGFX8::~DVIGFX8(void) {
@@ -135,11 +135,8 @@ bool DVIGFX8::begin(void) {
   uint8_t *bufptr = getBuffer();
   if ((bufptr)) {
     gfxptr = this;
-    HEIGHT -= 4; // Clip rows used by 16bpp scanlines (still word aligned)
-    row565[0] = (uint16_t *)&bufptr[WIDTH * HEIGHT];
+    row565[0] = (uint16_t *)&bufptr[(WIDTH * HEIGHT + 1) & ~1];
     row565[1] = row565[0] + WIDTH;
-    HEIGHT &= ~1;          // Then clip extra row (if any) that made W*H even
-    setRotation(rotation); // So HEIGHT also affects _height
     memset(palette, 0, sizeof palette);
     //mainloop = mainloop8;
     mainloop = dvi_scanbuf_main_16bpp; // in libdvi
