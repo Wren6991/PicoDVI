@@ -9,8 +9,8 @@
 class PicoDVI {
 public:
   PicoDVI(const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-      vreg_voltage v = VREG_VOLTAGE_1_10,
-      const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+          vreg_voltage v = VREG_VOLTAGE_1_10,
+          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
   ~PicoDVI(void);
   void _setup(void);
 
@@ -41,9 +41,9 @@ protected:
 class DVIGFX8 : public PicoDVI, public GFXcanvas8 {
 public:
   DVIGFX8(const uint16_t w = 320, const uint16_t h = 240,
-           const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-           vreg_voltage v = VREG_VOLTAGE_1_10,
-           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+          const struct dvi_timing &t = dvi_timing_640x480p_60hz,
+          vreg_voltage v = VREG_VOLTAGE_1_10,
+          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
   ~DVIGFX8(void);
   bool begin(void);
   uint16_t *getPalette(void) { return palette; }
@@ -59,5 +59,5 @@ protected:
   uint16_t palette[256];
   uint16_t *row565[2];   // 2 scanlines of 16-bit RGB565 data
   uint16_t scanline = 2; // First 2 scanlines are set up before DVI start
-  uint8_t foo = 1;
+  uint8_t rowidx = 1;    // Alternate 0/1 for which row565[] is active
 };

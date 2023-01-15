@@ -21,7 +21,7 @@ void PicoDVI::_setup(void) {
 }
 
 PicoDVI::PicoDVI(const struct dvi_timing &t, vreg_voltage v,
-         const struct dvi_serialiser_cfg &c)
+                 const struct dvi_serialiser_cfg &c)
     : voltage(v) {
   dvi0.timing = &t;
   memcpy(&dvi0.ser_cfg, &c, sizeof dvi0.ser_cfg);
@@ -49,9 +49,7 @@ DVIGFX16::DVIGFX16(const uint16_t w, const uint16_t h,
                    const struct dvi_serialiser_cfg &c)
     : PicoDVI(t, v, c), GFXcanvas16(w, h) {}
 
-DVIGFX16::~DVIGFX16(void) {
-  gfxptr = NULL;
-}
+DVIGFX16::~DVIGFX16(void) { gfxptr = NULL; }
 
 static void scanline_callback_GFX16(void) {
   ((DVIGFX16 *)gfxptr)->_scanline_callback();
@@ -100,35 +98,31 @@ bool DVIGFX16::begin(void) {
 // HEIGHT value is de-tweaked to the original value so clipping won't allow
 // any drawing operations to spill into the 16-bit scanlines.
 
-DVIGFX8::DVIGFX8(const uint16_t w, const uint16_t h,
-                 const struct dvi_timing &t, vreg_voltage v,
-                 const struct dvi_serialiser_cfg &c)
+DVIGFX8::DVIGFX8(const uint16_t w, const uint16_t h, const struct dvi_timing &t,
+                 vreg_voltage v, const struct dvi_serialiser_cfg &c)
     : PicoDVI(t, v, c), GFXcanvas8(w, ((h + 1) & ~1) + 4) {
   HEIGHT = _height = h;
 }
 
-DVIGFX8::~DVIGFX8(void) {
-  gfxptr = NULL;
-}
+DVIGFX8::~DVIGFX8(void) { gfxptr = NULL; }
 
 static void scanline_callback_GFX8(void) {
   ((DVIGFX8 *)gfxptr)->_scanline_callback();
 }
 
 void __not_in_flash_func(DVIGFX8::_scanline_callback)(void) {
-// Idea: try doing the bufptr remove/add stuff first, THEN do the palette
-// lookup afterward (for next scanline), so less of a race.
-
-  // Discard any scanline pointers passed back
-  uint8_t *b8 = &getBuffer()[WIDTH * scanline];
-  uint16_t *b16 = row565[foo];
-  for (int i=0; i<WIDTH; i++) b16[i] = palette[b8[i]];
+  uint16_t *b16;
   while (queue_try_remove_u32(&dvi0.q_colour_free, &b16))
-    ;
-  b16 = row565[foo];
-  queue_add_blocking_u32(&dvi0.q_colour_valid, &b16);
-  foo = (foo + 1) & 1;
-  scanline = (scanline + 1) % HEIGHT;
+    ;                   // Discard returned pointer(s)
+  b16 = row565[rowidx]; // Next row to send
+  queue_add_blocking_u32(&dvi0.q_colour_valid, &b16); // Send it
+
+  scanline = (scanline + 1) % HEIGHT;           // Next scanline
+  uint8_t *b8 = &getBuffer()[WIDTH * scanline]; // New src
+  rowidx = (rowidx + 1) & 1;                    // Swap row565[] bufs
+  b16 = row565[rowidx];                         // New dest
+  for (int i = 0; i < WIDTH; i++)
+    b16[i] = palette[b8[i]];
 }
 
 bool DVIGFX8::begin(void) {
@@ -138,11 +132,11 @@ bool DVIGFX8::begin(void) {
     row565[0] = (uint16_t *)&bufptr[(WIDTH * HEIGHT + 1) & ~1];
     row565[1] = row565[0] + WIDTH;
     memset(palette, 0, sizeof palette);
-    //mainloop = mainloop8;
+    // mainloop = mainloop8;
     mainloop = dvi_scanbuf_main_16bpp; // in libdvi
     dvi0.scanline_callback = scanline_callback_GFX8;
     PicoDVI::begin();
-    for (int i=0; i<WIDTH; i++) {
+    for (int i = 0; i < WIDTH; i++) {
       row565[0][i] = palette[bufptr[i]];
       row565[1][i] = palette[bufptr[i + WIDTH]];
     }
