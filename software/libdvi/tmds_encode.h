@@ -17,10 +17,6 @@ void tmds_setup_palette_symbols(const uint16_t *palette, uint32_t *symbuf, size_
 void tmds_setup_palette24_symbols(const uint32_t *palette, uint32_t *symbuf, size_t n_palette);
 void tmds_encode_palette_data(const uint32_t *pixbuf, const uint32_t *tmds_palette, uint32_t *symbuf, size_t n_pix, uint32_t palette_bits);
 
-#if defined(__cplusplus)
-}
-#endif
-
 // Functions from tmds_encode.S
 
 void tmds_encode_1bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);

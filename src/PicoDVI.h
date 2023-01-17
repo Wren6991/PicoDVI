@@ -92,3 +92,18 @@ protected:
   uint8_t back_index = 0;      // Which of 2 buffers receives draw ops
   volatile bool swap_wait = 0; // For syncronizing front/back buffer swap
 };
+
+class DVIGFX1 : public PicoDVI, public GFXcanvas1 {
+public:
+  DVIGFX1(const uint16_t w = 1280, const uint16_t h = 720,
+          const struct dvi_timing &t = dvi_timing_1280x720p_30hz,
+          vreg_voltage v = VREG_VOLTAGE_1_25,
+          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  ~DVIGFX1(void);
+  bool begin(void);
+  void foo(void);
+  void _scanline_callback(void);
+
+protected:
+  uint16_t scanline = 2; // First 2 scanlines are set up before DVI start
+};

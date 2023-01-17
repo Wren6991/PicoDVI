@@ -237,3 +237,43 @@ void DVIGFX8x2::swap(bool copy_framebuffer, bool copy_palette) {
     memcpy(palette[back_index], palette[1 - back_index], sizeof(palette[0]));
   }
 }
+
+// 1-bit WIP --------
+
+DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h,
+                 const struct dvi_timing &t, vreg_voltage v,
+                 const struct dvi_serialiser_cfg &c)
+    : PicoDVI(t, v, c), GFXcanvas1(w, h) {}
+
+DVIGFX1::~DVIGFX1(void) { gfxptr = NULL; }
+
+static void mainloop1(struct dvi_inst *inst) {
+  ((DVIGFX1 *)gfxptr)->foo();
+}
+
+#include "libdvi/tmds_encode.h"
+
+void DVIGFX1::foo(void) {
+  uint8_t *buf = getBuffer();
+  for (;;) {
+    for (uint16_t y = 0; y < HEIGHT; y++) {
+      const uint32_t *colourbuf = (const uint32_t*)(buf + y * (WIDTH + 7) / 8);
+      uint32_t *tmdsbuf;
+      queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
+      //tmds_encode_1bpp(colourbuf, tmdsbuf, WIDTH);
+      queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
+    }
+  }
+}
+
+bool DVIGFX1::begin(void) {
+  uint8_t *bufptr = getBuffer();
+  if ((bufptr)) {
+    gfxptr = this;
+    mainloop = mainloop1;
+    PicoDVI::begin();
+    wait_begin = false; // Set core 1 in motion
+    return true;
+  }
+  return false;
+}
