@@ -136,10 +136,8 @@ bool DVIGFX8::begin(void) {
     mainloop = dvi_scanbuf_main_16bpp; // in libdvi
     dvi0.scanline_callback = scanline_callback_GFX8;
     PicoDVI::begin();
-    for (int i = 0; i < WIDTH; i++) {
-      row565[0][i] = palette[bufptr[i]];
-      row565[1][i] = palette[bufptr[i + WIDTH]];
-    }
+    // No need to initialize the row565 buffer contents as that memory is
+    // cleared on canvas alloc, and the initial palette state is also all 0.
     uint16_t *b16 = row565[0];
     queue_add_blocking_u32(&dvi0.q_colour_valid, &b16);
     b16 = row565[1];
@@ -148,4 +146,94 @@ bool DVIGFX8::begin(void) {
     return true;
   }
   return false;
+}
+
+// DVIGFX8x2 (8-bit, color-indexed, double-buffered for animation)
+// requires latest Adafruit_GFX as it plays games with the canvas pointer,
+// wasn't possible until that was made protected (vs private). This is very
+// similar to DVIGFX8 but effectively has two canvases and palettes ("front"
+// and "back"). Drawing and palette-setting operations ONLY apply to the
+// "back" state. Call swap() to switch the front/back buffers at the next
+// vertical sync, for flicker-free and tear-free animation.
+
+DVIGFX8x2::DVIGFX8x2(const uint16_t w, const uint16_t h,
+                     const struct dvi_timing &t, vreg_voltage v,
+                     const struct dvi_serialiser_cfg &c)
+    : PicoDVI(t, v, c), GFXcanvas8(w, h * 2 + 4) {
+  HEIGHT = _height = h;
+  buffer_save = buffer;
+}
+
+DVIGFX8x2::~DVIGFX8x2(void) {
+  buffer = buffer_save; // Restore pointer so canvas destructor works
+  gfxptr = NULL;
+}
+
+static void scanline_callback_GFX8x2(void) {
+  ((DVIGFX8x2 *)gfxptr)->_scanline_callback();
+}
+
+void __not_in_flash_func(DVIGFX8x2::_scanline_callback)(void) {
+  uint16_t *b16;
+  while (queue_try_remove_u32(&dvi0.q_colour_free, &b16))
+    ;                   // Discard returned pointer(s)
+  b16 = row565[rowidx]; // Next row to send
+  queue_add_blocking_u32(&dvi0.q_colour_valid, &b16); // Send it
+
+  if (++scanline >= HEIGHT) {      // Next scanline...end of screen reached?
+    if (swap_wait) {               // Swap buffers?
+      back_index = 1 - back_index; // Yes plz
+      buffer = buffer_save + WIDTH * HEIGHT * back_index;
+      swap_wait = 0;
+    }
+    scanline = 0;
+  }
+  // Refresh from front buffer
+  uint8_t *b8 = buffer_save + WIDTH * HEIGHT * (1 - back_index) +
+                WIDTH * scanline; // New src
+  rowidx = (rowidx + 1) & 1;      // Swap row565[] bufs
+  b16 = row565[rowidx];           // New dest
+  for (int i = 0; i < WIDTH; i++)
+    b16[i] = palette[1 - back_index][b8[i]];
+}
+
+bool DVIGFX8x2::begin(void) {
+  uint8_t *bufptr = getBuffer();
+  if ((bufptr)) {
+    gfxptr = this;
+    row565[0] = (uint16_t *)&bufptr[WIDTH * HEIGHT * 2];
+    row565[1] = row565[0] + WIDTH;
+    memset(palette, 0, sizeof palette);
+    // mainloop = mainloop8;
+    mainloop = dvi_scanbuf_main_16bpp; // in libdvi
+    dvi0.scanline_callback = scanline_callback_GFX8x2;
+    PicoDVI::begin();
+    bufptr += WIDTH * HEIGHT; // Initial front buffer is index 1
+    // No need to initialize the row565 buffer contents as that memory is
+    // cleared on canvas alloc, and the initial palette state is also all 0.
+    uint16_t *b16 = row565[0];
+    queue_add_blocking_u32(&dvi0.q_colour_valid, &b16);
+    b16 = row565[1];
+    queue_add_blocking_u32(&dvi0.q_colour_valid, &b16);
+    wait_begin = false; // Set core 1 in motion
+    return true;
+  }
+  return false;
+}
+
+void DVIGFX8x2::swap(bool copy_framebuffer, bool copy_palette) {
+
+  // Request buffer swap at next frame end, wait for it to happen.
+  for (swap_wait = 1; swap_wait;)
+    ;
+
+  if ((copy_framebuffer)) {
+    uint32_t bufsize = WIDTH * HEIGHT;
+    memcpy(buffer_save + bufsize * back_index,
+           buffer_save + bufsize * (1 - back_index), bufsize);
+  }
+
+  if ((copy_palette)) {
+    memcpy(palette[back_index], palette[1 - back_index], sizeof(palette[0]));
+  }
 }
