@@ -240,9 +240,8 @@ void DVIGFX8x2::swap(bool copy_framebuffer, bool copy_palette) {
 
 // 1-bit WIP --------
 
-DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h,
-                 const struct dvi_timing &t, vreg_voltage v,
-                 const struct dvi_serialiser_cfg &c)
+DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h, const struct dvi_timing &t,
+                 vreg_voltage v, const struct dvi_serialiser_cfg &c)
     : PicoDVI(t, v, c), GFXcanvas1(w, h) {}
 
 DVIGFX1::~DVIGFX1(void) { gfxptr = NULL; }
@@ -257,9 +256,8 @@ void __not_in_flash_func(DVIGFX1::_mainloop)(void) {
   uint8_t *buf = getBuffer();
   for (;;) {
     for (int y = 0; y < HEIGHT; y++) {
-      const uint32_t *colourbuf = (const uint32_t*)(buf + y * ((WIDTH + 7) / 8));
-      //const uint32_t *colourbuf = &((const uint32_t*)buf)[y * WIDTH / 32];
-
+      const uint32_t *colourbuf =
+          (const uint32_t *)(buf + y * ((WIDTH + 7) / 8));
       uint32_t *tmdsbuf;
       queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
       tmds_encode_1bpp(colourbuf, tmdsbuf, WIDTH);
