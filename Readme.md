@@ -26,9 +26,9 @@ regenerated.
 - A couple compile-time constants have been changed to run-time configurable
 because some color and resolution things aren't known until a constructor is
 called: dvi_vertical_repeat and dvi_monochrome_tmds.
-- DVI_1BPP_BIT_REVERSE is set '1' by default. This might affect some examples
-built with the Pico SDK (moon, bad_apple), but could be fixed by changing the
-compile definitions in CMakeLists.txt in those app subdirectories.
+- DVI_1BPP_BIT_REVERSE is switched '1' by default (to work with bit order
+used by GFXcanvas1 object). Pico SDK-built examples using 1-bit mode are
+fixed by changing the corresponding CMakeLists.txt files to set this to 0.
 
 All files from the PicoDVI repo are kept even if not used in this build
 (e.g. apps and assets directories, among others) so same repo can still be

@@ -11,6 +11,7 @@ target_compile_definitions(moon PRIVATE
 	DVI_VERTICAL_REPEAT=1
 	DVI_N_TMDS_BUFFERS=3
 	DVI_MONOCHROME_TMDS
+	DVI_1BPP_BIT_REVERSE=0
 )
 
 target_link_libraries(moon
