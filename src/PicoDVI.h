@@ -6,6 +6,9 @@
 #include "pico/stdlib.h" // In Pico SDK
 #include <Adafruit_GFX.h>
 
+extern uint8_t dvi_vertical_repeat; // In libdvi/dvi.c
+extern bool dvi_monochrome_tmds;    // In libdvi/dvi.c
+
 class PicoDVI {
 public:
   PicoDVI(const struct dvi_timing &t = dvi_timing_640x480p_60hz,

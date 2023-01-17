@@ -118,7 +118,7 @@
 // If 1, reverse the order of pixels within each byte. Order of bytes within
 // each word is still little-endian.
 #ifndef DVI_1BPP_BIT_REVERSE
-#define DVI_1BPP_BIT_REVERSE 0
+#define DVI_1BPP_BIT_REVERSE 1 // Adafruit_GFX GFXcanvas1 requires this 1
 #endif
 
 // ----------------------------------------------------------------------------

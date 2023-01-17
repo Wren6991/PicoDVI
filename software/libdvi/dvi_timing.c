@@ -7,6 +7,8 @@
 //   achievable bit clock from 12 MHz crystal)
 // - Helper functions for generating DMA lists based on these timings
 
+extern bool dvi_monochrome_tmds; // In dvi.c
+
 // Pull into RAM but apply unique section suffix to allow linker GC
 #define __dvi_func(x) __not_in_flash_func(x)
 #define __dvi_const(x) __not_in_flash_func(x)
@@ -312,11 +314,7 @@ void dvi_setup_scanline_for_active(const struct dvi_timing *t, const struct dvi_
 
 void __dvi_func(dvi_update_scanline_data_dma)(const struct dvi_timing *t, const uint32_t *tmdsbuf, struct dvi_scanline_dma_list *l) {
 	for (int i = 0; i < N_TMDS_LANES; ++i) {
-#if DVI_MONOCHROME_TMDS
-		const uint32_t *lane_tmdsbuf = tmdsbuf;
-#else
-		const uint32_t *lane_tmdsbuf = tmdsbuf + i * t->h_active_pixels / DVI_SYMBOLS_PER_WORD;
-#endif
+		const uint32_t *lane_tmdsbuf = dvi_monochrome_tmds ? tmdsbuf : tmdsbuf + i * t->h_active_pixels / DVI_SYMBOLS_PER_WORD;
 		if (i == TMDS_SYNC_LANE)
 			dvi_lane_from_list(l, i)[3].read_addr = lane_tmdsbuf;
 		else

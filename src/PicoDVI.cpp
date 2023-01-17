@@ -47,7 +47,10 @@ static void *gfxptr = NULL; // For C access to active C++ object
 DVIGFX16::DVIGFX16(const uint16_t w, const uint16_t h,
                    const struct dvi_timing &t, vreg_voltage v,
                    const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas16(w, h) {}
+    : PicoDVI(t, v, c), GFXcanvas16(w, h) {
+  dvi_vertical_repeat = 2;
+  dvi_monochrome_tmds = false;
+}
 
 DVIGFX16::~DVIGFX16(void) { gfxptr = NULL; }
 
@@ -102,6 +105,8 @@ DVIGFX8::DVIGFX8(const uint16_t w, const uint16_t h, const struct dvi_timing &t,
                  vreg_voltage v, const struct dvi_serialiser_cfg &c)
     : PicoDVI(t, v, c), GFXcanvas8(w, ((h + 1) & ~1) + 4) {
   HEIGHT = _height = h;
+  dvi_vertical_repeat = 2;
+  dvi_monochrome_tmds = false;
 }
 
 DVIGFX8::~DVIGFX8(void) { gfxptr = NULL; }
@@ -162,6 +167,8 @@ DVIGFX8x2::DVIGFX8x2(const uint16_t w, const uint16_t h,
     : PicoDVI(t, v, c), GFXcanvas8(w, h * 2 + 4) {
   HEIGHT = _height = h;
   buffer_save = buffer;
+  dvi_vertical_repeat = 2;
+  dvi_monochrome_tmds = false;
 }
 
 DVIGFX8x2::~DVIGFX8x2(void) {
@@ -242,7 +249,10 @@ void DVIGFX8x2::swap(bool copy_framebuffer, bool copy_palette) {
 
 DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h, const struct dvi_timing &t,
                  vreg_voltage v, const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas1(w, h) {}
+    : PicoDVI(t, v, c), GFXcanvas1(w, h) {
+  dvi_vertical_repeat = 1;
+  dvi_monochrome_tmds = true;
+}
 
 DVIGFX1::~DVIGFX1(void) { gfxptr = NULL; }
 

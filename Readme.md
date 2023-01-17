@@ -22,6 +22,13 @@ generated during the Pico SDK build process, is provided here for Arduino
 build to work. If any changes are made in dvi_serialiser.pio (either here
 or by bringing in updates from upstream code), this header will need to be
 regenerated.
+- extern "C" around most function defs, to be linkable with C++ (Arduino).
+- A couple compile-time constants have been changed to run-time configurable
+because some color and resolution things aren't known until a constructor is
+called: dvi_vertical_repeat and dvi_monochrome_tmds.
+- DVI_1BPP_BIT_REVERSE is set '1' by default. This might affect some examples
+built with the Pico SDK (moon, bad_apple), but could be fixed by changing the
+compile definitions in CMakeLists.txt in those app subdirectories.
 
 All files from the PicoDVI repo are kept even if not used in this build
 (e.g. apps and assets directories, among others) so same repo can still be
