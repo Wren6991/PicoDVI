@@ -248,19 +248,21 @@ DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h,
 DVIGFX1::~DVIGFX1(void) { gfxptr = NULL; }
 
 static void mainloop1(struct dvi_inst *inst) {
-  ((DVIGFX1 *)gfxptr)->foo();
+  ((DVIGFX1 *)gfxptr)->_mainloop();
 }
 
 #include "libdvi/tmds_encode.h"
 
-void DVIGFX1::foo(void) {
+void __not_in_flash_func(DVIGFX1::_mainloop)(void) {
   uint8_t *buf = getBuffer();
   for (;;) {
-    for (uint16_t y = 0; y < HEIGHT; y++) {
-      const uint32_t *colourbuf = (const uint32_t*)(buf + y * (WIDTH + 7) / 8);
+    for (int y = 0; y < HEIGHT; y++) {
+      const uint32_t *colourbuf = (const uint32_t*)(buf + y * ((WIDTH + 7) / 8));
+      //const uint32_t *colourbuf = &((const uint32_t*)buf)[y * WIDTH / 32];
+
       uint32_t *tmdsbuf;
       queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
-      //tmds_encode_1bpp(colourbuf, tmdsbuf, WIDTH);
+      tmds_encode_1bpp(colourbuf, tmdsbuf, WIDTH);
       queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
     }
   }

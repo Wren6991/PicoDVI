@@ -101,9 +101,5 @@ public:
           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
   ~DVIGFX1(void);
   bool begin(void);
-  void foo(void);
-  void _scanline_callback(void);
-
-protected:
-  uint16_t scanline = 2; // First 2 scanlines are set up before DVI start
+  void _mainloop(void);
 };
