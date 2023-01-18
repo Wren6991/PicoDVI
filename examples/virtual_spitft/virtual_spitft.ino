@@ -37,7 +37,20 @@ static inline pio_sm_config fourwire_program_get_default_config(uint offset) {
 
 // end pioasm output ----
 
+#include <PicoDVI.h> // Core display & graphics library
+
+// Your basic 320x240 16-bit color display:
+DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
+// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
+//DVIGFX16 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+
 PIO pio = pio1;
+uint sm;
+
+uint8_t decode[256];
+#define DECODE(w) (decode[(w & 0x55) | ((w >> 7) & 0xaa)])
+
+uint16_t *framebuf = display.getBuffer();
 
 #define BIT_DEPOSIT(b, i) ((b) ? (1<<(i)) : 0)
 #define BIT_EXTRACT(b, i) (((b) >> (i)) & 1)
@@ -53,47 +66,26 @@ PIO pio = pio1;
     (BIT_MOVE(x, 7, 14)) \
 )
 
-uint8_t decode[256];
 
-struct {
-    uint8_t x0h, x0l, x1h, x1l, y0h, y0l, y1h, y1l;
-} bounds;
+#define COMMAND_NOP     (0x00)
+#define COMMAND_SWRESET (0x01)
+#define COMMAND_CASET   (0x2a)
+#define COMMAND_PASET   (0x2b)
+#define COMMAND_RAMWR   (0x2c)
+#define COMMAND_MADCTL  (0x36)
 
-#define COMMAND_CASET (0x2a)
-#define COMMAND_PASET (0x2b)
-#define COMMAND_RAMWR (0x2c)
-
-static int clamped(int x, int lo, int hi) {
-    if(x < lo) { return lo; }
-    if(x > hi) { return hi; }
-    return x;
-}
-
-#define GET_WORD() (word = pio_sm_get_blocking(pio, sm))
-#define GET_DATA() do { GET_WORD(); if(IS_COMMAND()) goto next_command; } while(0)
-#define IS_COMMAND() (!(word & 0x2))
-#define DECODED() (decode[(word & 0x55) | ((word >> 7) & 0xaa)])
-
-uint16_t *framebuf;
-uint sm;
-
-
-#include <PicoDVI.h> // Core display & graphics library
-
-// Your basic 320x240 16-bit color display:
-DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
-// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
-//DVIGFX16 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+#define MADCTL_MY 0x80
+#define MADCTL_MX 0x40
+#define MADCTL_MV 0x20
+#define MADCTL_ML 0x10
 
 void setup() {
   Serial.begin(115200);
-  //while(!Serial);
+  while(!Serial);
   if (!display.begin()) { // Blink LED if insufficient RAM
     pinMode(LED_BUILTIN, OUTPUT);
     for (;;) digitalWrite(LED_BUILTIN, (millis() / 500) & 1);
   }
-
-  framebuf = display.getBuffer();
 
   for(int i=0; i<256; i++) {
     int j = (BIT_MOVE(i,  0, 0)) |
@@ -121,17 +113,13 @@ void setup() {
   sm_config_set_jmp_pin(&c, jmp_pin);
   // Set the pin directions to input at the PIO
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 3, false);
-  pio_sm_set_consecutive_pindirs(pio, sm, 1, 1, false);
   pio_sm_set_consecutive_pindirs(pio, sm, jmp_pin, 1, false);
-  // Connect these GPIOs to this PIO block
-  pio_gpio_init(pio, pin);
-  pio_gpio_init(pio, pin + 1);
-  pio_gpio_init(pio, pin + 2);
+  // Connect GPIOs to PIO block, set pulls
+  for (uint8_t i=0; i<3; i++) {
+    pio_gpio_init(pio, pin + i);
+    gpio_set_pulls(pin + i, true, false);
+  }
   pio_gpio_init(pio, jmp_pin);
-  // set pulls
-  gpio_set_pulls(pin, true, false);
-  gpio_set_pulls(pin + 1, true, false);
-  gpio_set_pulls(pin + 2, true, false);
   gpio_set_pulls(jmp_pin, true, false);
 
   // Shifting to left matches the customary MSB-first ordering of SPI.
@@ -148,137 +136,127 @@ void setup() {
   // Load our configuration, and start the program from the beginning
   pio_sm_init(pio, sm, offset, &c);
   pio_sm_set_enabled(pio, sm, true);
+
+  // State machine should handle malformed requests somewhat,
+  // e.g. RAMWR writes that wrap around or drop mid-data.
+
+  uint8_t cmd = COMMAND_NOP; // Last received command
+  // Address window and current pixel position:
+  uint16_t X0 = 0, X1 = display.width() - 1, Y0 = 0, Y1 = display.height() - 1;
+  uint16_t x = 0, y = 0;
+  union { // Data receive buffer sufficient for implemented commands
+    uint8_t  b[4];
+    uint16_t w[2];
+    uint32_t l;
+  } buf;
+  uint8_t buflen = 0; // Number of bytes expected following command
+  uint8_t bufidx = 0; // Current position in buf.b[] array
+
+  for (;;) {
+    uint16_t ww = pio_sm_get_blocking(pio, sm); // Read next word (data & DC interleaved)
+    if ((ww & 0x2)) { // DC bit is set, that means it's data (most common case, hence 1st)
+      if (bufidx < buflen) { // Decode & process only if recv buffer isn't full
+        buf.b[bufidx++] = DECODE(ww);
+        if (bufidx >= buflen) { // Receive threshold reached?
+          switch (cmd) {
+           case COMMAND_CASET:
+            // Clipping is not performed here because framebuffer
+            // may be a different size than implied SPI device.
+            // That occurs in the RAMWR condition later.
+            X0 = __builtin_bswap16(buf.w[0]);
+            X1 = __builtin_bswap16(buf.w[1]);
+            if (X0 > X1) {
+              uint16_t tmp = X0;
+              X0 = X1;
+              X1 = tmp;
+            }
+            buflen = 0; // Disregard any further data
+            break;
+           case COMMAND_PASET:
+            Y0 = __builtin_bswap16(buf.w[0]);
+            Y1 = __builtin_bswap16(buf.w[1]);
+            if (Y0 > Y1) {
+              uint16_t tmp = Y0;
+              Y0 = Y1;
+              Y1 = tmp;
+            }
+            buflen = 0; // Disregard any further data
+            break;
+           case COMMAND_RAMWR:
+            // Write pixel to screen, increment X/Y, wrap around as needed.
+            // drawPixel() is used as it handles both clipping & rotation,
+            // saves a lot of bother here. However, this only handles rotation,
+            // NOT full MADCTL mapping, but the latter is super rare, I think
+            // it's only used in some eye code to mirror one of two screens.
+            // If it's required, then rotation, mirroring and clipping will
+            // all need to be handled in this code...but, can write direct to
+            // framebuffer then, might save some cycles.
+            display.drawPixel(x, y, __builtin_bswap16(buf.w[0]));
+            if (++x > X1) {
+              x = X0;
+              if (++y > Y1) {
+                y = Y0;
+              }
+            }
+            bufidx = 0; // Reset for next pixel
+            // Buflen is left as-is, so more pixels can be processed
+            break;
+           case COMMAND_MADCTL:
+            switch (buf.b[0] & 0xF0) {
+             case MADCTL_MX | MADCTL_MV:             // ST77XX
+             case MADCTL_MX | MADCTL_MY | MADCTL_MV: // ILI9341
+              display.setRotation(0);
+              break;
+             case MADCTL_MX | MADCTL_MY: // ST77XX
+             case MADCTL_MX:             // ILI9341
+              display.setRotation(1);
+              break;
+             case MADCTL_MY | MADCTL_MV: // ST77XX
+             case MADCTL_MV:             // ILI9341
+              display.setRotation(2);
+              break;
+             case 0:         // ST77XX
+             case MADCTL_MY: // ILI9341
+              display.setRotation(3);
+              break;
+            }
+            //madctl = buf.b[0];
+            buflen = 0; // Disregard any further data
+            break;
+          }
+        }
+      }
+    } else { // Is command
+      bufidx = 0; // Reset data recv buffer
+      cmd = DECODE(ww);
+      switch (cmd) {
+       case COMMAND_SWRESET:
+        display.setRotation(0);
+        x = y = X0 = Y0 = buflen = 0;
+        X1 = display.width() - 1;
+        Y1 = display.height() - 1;
+        break;
+       case COMMAND_CASET:
+        buflen = 4; // Expecting 2 16-bit values (X0, X1)
+        break;
+       case COMMAND_PASET:
+        buflen = 4; // Expecting 2 16-bit values (Y0, Y1)
+        break;
+       case COMMAND_RAMWR:
+        buflen = 2; // Expecting 1+ 16-bit values
+        x = X0;     // Start at UL of address window
+        y = Y0;
+        break;
+       case COMMAND_MADCTL:
+        buflen = 1; // Expecting 1 8-bit value
+        break;
+       default:
+        // Unknown or unimplemented command, discard any data that follows
+        buflen = 0;
+      }
+    }
+  }
 }
 
 void loop() {
-uint16_t word = 0;
-
-    int x=0, y=0;
-    while(true) {
-        GET_WORD();
-next_command:
-        switch(word) {
-        case ENCODED_COMMAND(COMMAND_CASET):
-            GET_DATA();
-            bounds.x0h = DECODED();
-
-            GET_DATA();
-            bounds.x0l = DECODED();
-
-            GET_DATA();
-            bounds.x1h = DECODED();
-
-            GET_DATA();
-            bounds.x1l = DECODED();
-            break;
-
-        case ENCODED_COMMAND(COMMAND_PASET):
-            GET_DATA();
-            bounds.y0h = DECODED();
-
-            GET_DATA();
-            bounds.y0l = DECODED();
-
-            GET_DATA();
-            bounds.y1h = DECODED();
-
-            GET_DATA();
-            bounds.y1l = DECODED();
-            break;
-
-        case ENCODED_COMMAND(COMMAND_RAMWR):
-            {
-                int X0 = bounds.x0l | (bounds.x0h << 8);
-                X0 = clamped(X0, 0, display.width());
-                int X1 = bounds.x1l | (bounds.x1h << 8);
-                X1 = clamped(X1, X0, display.width()) + 1;
-
-                int Y0 = bounds.y0l | (bounds.y0h << 8);
-                Y0 = clamped(Y0, 0, display.height());
-                int Y1 = bounds.y1l | (bounds.y1h << 8);
-                Y1 = clamped(Y1, Y0, display.height()) + 1;
-                while(1) {
-                    for(y=Y0; y<Y1; y++) {
-                        for(x=X0; x<X1; x++) {
-                            GET_DATA();
-                            uint16_t pixel = DECODED() << 8;
-                            GET_DATA();
-                            pixel |= DECODED();
-                            framebuf[x + y * display.width()] = pixel;
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
-
-#if 0
-
-// Orig code:
-
-.program fourwire
-; Sample bits using an external clock, and push groups of bits into the RX FIFO.
-; - IN pin 0 is the data pin   (GPIO18)
-; - IN pin 1 is the dc pin     (GPIO19)
-; - IN pin 2 is the clock pin  (GPIO20)
-; - JMP pin is the chip select (GPIO21)
-; - Autopush is enabled, threshold 8
-;
-; This program waits for chip select to be asserted (low) before it begins
-; clocking in data. Whilst chip select is low, data is clocked continuously. If
-; chip select is deasserted part way through a data byte, the partial data is
-; discarded. This makes use of the fact a mov to isr clears the input shift
-; counter.
-flush:
-    mov isr, null         ; Clear ISR and input shift counter
-    jmp check_chip_select ; Poll chip select again
-.wrap_target
-do_bit:
-    wait 0 pin 2          ; Detect rising edge and sample input data
-    wait 1 pin 2          ; (autopush takes care of moving each complete
-    in pins, 2            ; data word to the FIFO)
-check_chip_select:
-    jmp pin, flush        ; Bail out if we see chip select high
-.wrap
-
-% c-sdk {
-static inline void fourwire_program_init(PIO pio, uint sm, uint offset, uint pin, uint jmp_pin) {
-    pio_sm_config c = fourwire_program_get_default_config(offset);
-
-    // Set the IN base pin to the provided `pin` parameter. This is the data
-    // pin, and the next-numbered GPIO is used as the clock pin.
-    sm_config_set_in_pins(&c, pin);
-    sm_config_set_jmp_pin(&c, jmp_pin);
-    // Set the pin directions to input at the PIO
-    pio_sm_set_consecutive_pindirs(pio, sm, pin, 3, false);
-    pio_sm_set_consecutive_pindirs(pio, sm, 1, 1, false);
-    pio_sm_set_consecutive_pindirs(pio, sm, jmp_pin, 1, false);
-    // Connect these GPIOs to this PIO block
-    pio_gpio_init(pio, pin);
-    pio_gpio_init(pio, pin + 1);
-    pio_gpio_init(pio, pin + 2);
-    pio_gpio_init(pio, jmp_pin);
-    // set pulls
-    gpio_set_pulls(pin, true, false);
-    gpio_set_pulls(pin + 1, true, false);
-    gpio_set_pulls(pin + 2, true, false);
-    gpio_set_pulls(jmp_pin, true, false);
-
-    // Shifting to left matches the customary MSB-first ordering of SPI.
-    sm_config_set_in_shift(
-        &c,
-        false, // Shift-to-right = false (i.e. shift to left)
-        true,  // Autopush enabled
-        16     // Autopush threshold
-    );
-
-    // We only receive, so disable the TX FIFO to make the RX FIFO deeper.
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
-
-    // Load our configuration, and start the program from the beginning
-    pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
-}
-%}
-#endif
