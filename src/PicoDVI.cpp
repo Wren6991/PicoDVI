@@ -1,4 +1,5 @@
 #include "PicoDVI.h"
+#include "libdvi/tmds_encode.h"
 
 // PicoDVI class encapsulates some of the libdvi functionality -------------
 // Subclasses then implement specific display types.
@@ -247,38 +248,48 @@ void DVIGFX8x2::swap(bool copy_framebuffer, bool copy_palette) {
 
 // 1-bit WIP --------
 
-DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h, const struct dvi_timing &t,
-                 vreg_voltage v, const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas1(w, h) {
+DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h, const bool d,
+                 const struct dvi_timing &t, vreg_voltage v,
+                 const struct dvi_serialiser_cfg &c)
+    : PicoDVI(t, v, c), GFXcanvas1(w, d ? (h * 2) : h), dbuf(d) {
   dvi_vertical_repeat = 1;
   dvi_monochrome_tmds = true;
+  HEIGHT = _height = h;
+  buffer_save = buffer;
 }
 
-DVIGFX1::~DVIGFX1(void) { gfxptr = NULL; }
+DVIGFX1::~DVIGFX1(void) {
+  buffer = buffer_save; // Restore pointer so canvas destructor works
+  gfxptr = NULL;
+}
 
 static void mainloop1(struct dvi_inst *inst) {
   ((DVIGFX1 *)gfxptr)->_mainloop();
 }
 
-#include "libdvi/tmds_encode.h"
-
 void __not_in_flash_func(DVIGFX1::_mainloop)(void) {
-  uint8_t *buf = getBuffer();
   for (;;) {
+    uint8_t *b8 = buffer_save;
+    if (dbuf)
+      b8 += ((WIDTH + 7) / 8) * HEIGHT * (1 - back_index);
     for (int y = 0; y < HEIGHT; y++) {
       const uint32_t *colourbuf =
-          (const uint32_t *)(buf + y * ((WIDTH + 7) / 8));
+          (const uint32_t *)(b8 + y * ((WIDTH + 7) / 8));
       uint32_t *tmdsbuf;
       queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
       tmds_encode_1bpp(colourbuf, tmdsbuf, WIDTH);
       queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
     }
+    if (swap_wait) {               // Swap buffers?
+      back_index = 1 - back_index; // Yes plz
+      buffer = buffer_save + ((WIDTH + 7) / 8) * HEIGHT * back_index;
+      swap_wait = 0;
+    }
   }
 }
 
 bool DVIGFX1::begin(void) {
-  uint8_t *bufptr = getBuffer();
-  if ((bufptr)) {
+  if ((getBuffer())) {
     gfxptr = this;
     mainloop = mainloop1;
     PicoDVI::begin();
@@ -286,4 +297,18 @@ bool DVIGFX1::begin(void) {
     return true;
   }
   return false;
+}
+
+void DVIGFX1::swap(bool copy_framebuffer) {
+  if (dbuf) {
+    // Request buffer swap at next frame end, wait for it to happen.
+    for (swap_wait = 1; swap_wait;)
+      ;
+
+    if ((copy_framebuffer)) {
+      uint32_t bufsize = ((WIDTH + 7) / 8) * HEIGHT;
+      memcpy(buffer_save + bufsize * back_index,
+             buffer_save + bufsize * (1 - back_index), bufsize);
+    }
+  }
 }
