@@ -6,15 +6,13 @@
 
 // Configurables ----
 
-// Your basic 320x240 16-bit color display:
-DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
-// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
-//DVIGFX16 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
-
 // GPIO connected to (or shared with) TFT control.
 // Careful not to overlap the DVI pins.
 #define PIN_DATA 18 // 3 contiguous pins start here: data, DC, clk
 #define PIN_CS   21 // Chip-select need not be contiguous
+
+// 320x240 16-bit color display:
+DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
 
 // Output of pioasm ----
 
@@ -46,7 +44,7 @@ static inline pio_sm_config fourwire_program_get_default_config(uint offset) {
 
 // end pioasm output ----
 
-PIO pio = pio1; // pio0 is used by libdvi
+PIO pio = pio1; // libdvi uses pio0 (but has 1 avail state machine if you want to use it)
 uint sm;
 uint16_t *framebuf = display.getBuffer();
 uint8_t decode[256];
@@ -80,7 +78,7 @@ uint8_t decode[256];
 
 void setup() {
   Serial.begin(115200);
-  while(!Serial);
+  //while(!Serial);
   if (!display.begin()) { // Blink LED if insufficient RAM
     pinMode(LED_BUILTIN, OUTPUT);
     for (;;) digitalWrite(LED_BUILTIN, (millis() / 500) & 1);
@@ -136,47 +134,45 @@ void setup() {
   // State machine should handle malformed requests somewhat,
   // e.g. RAMWR writes that wrap around or drop mid-data.
 
-  uint8_t cmd = COMMAND_NOP; // Last received command
-  // Address window and current pixel position:
-  uint16_t X0 = 0, X1 = display.width() - 1, Y0 = 0, Y1 = display.height() - 1;
-  uint16_t x = 0, y = 0;
+  uint8_t cmd = COMMAND_NOP;                  // Last received command
+  uint16_t X0 = 0, X1 = display.width() - 1;  // Address window X
+  uint16_t Y0 = 0, Y1 = display.height() - 1; // Address window Y
+  uint16_t x = 0, y = 0;                      // Current pixel pos.
   union { // Data receive buffer sufficient for implemented commands
     uint8_t  b[4];
     uint16_t w[2];
     uint32_t l;
   } buf;
-  uint8_t buflen = 0; // Number of bytes expected following command
-  uint8_t bufidx = 0; // Current position in buf.b[] array
+  int8_t bufidx = -1; // Current pos. in buf.b[] array (or -1 = full)
 
   for (;;) {
     uint16_t ww = pio_sm_get_blocking(pio, sm); // Read next word (data & DC interleaved)
     if ((ww & 0x2)) { // DC bit is set, that means it's data (most common case, hence 1st)
-      if (bufidx < buflen) { // Decode & process only if recv buffer isn't full
-        buf.b[bufidx++] = DECODE(ww);
-        if (bufidx >= buflen) { // Receive threshold reached?
+      if (bufidx >= 0) { // Decode & process only if recv buffer isn't full
+        buf.b[bufidx] = DECODE(ww);
+        // Buffer is filled in reverse so byte swaps aren't needed on uint16_t values
+        if (--bufidx < 0) { // Receive threshold reached?
           switch (cmd) {
            case COMMAND_CASET:
             // Clipping is not performed here because framebuffer
             // may be a different size than implied SPI device.
             // That occurs in the RAMWR condition later.
-            X0 = __builtin_bswap16(buf.w[0]);
-            X1 = __builtin_bswap16(buf.w[1]);
+            X0 = buf.w[1]; // [sic.] 1 because buffer is loaded in reverse
+            X1 = buf.w[0];
             if (X0 > X1) {
               uint16_t tmp = X0;
               X0 = X1;
               X1 = tmp;
             }
-            buflen = 0; // Disregard any further data
             break;
            case COMMAND_PASET:
-            Y0 = __builtin_bswap16(buf.w[0]);
-            Y1 = __builtin_bswap16(buf.w[1]);
+            Y0 = buf.w[1]; // [sic.] 1 because buffer is loaded in reverse
+            Y1 = buf.w[0];
             if (Y0 > Y1) {
               uint16_t tmp = Y0;
               Y0 = Y1;
               Y1 = tmp;
             }
-            buflen = 0; // Disregard any further data
             break;
            case COMMAND_RAMWR:
             // Write pixel to screen, increment X/Y, wrap around as needed.
@@ -187,14 +183,14 @@ void setup() {
             // If it's required, then rotation, mirroring and clipping will
             // all need to be handled in this code...but, can write direct to
             // framebuffer then, might save some cycles.
-            display.drawPixel(x, y, __builtin_bswap16(buf.w[0]));
+            display.drawPixel(x, y, buf.w[0]);
             if (++x > X1) {
               x = X0;
               if (++y > Y1) {
                 y = Y0;
               }
             }
-            bufidx = 0; // Reset for next pixel
+            bufidx = 1; // Reset buffer counter for next pixel
             // Buflen is left as-is, so more pixels can be processed
             break;
            case COMMAND_MADCTL:
@@ -216,39 +212,36 @@ void setup() {
               display.setRotation(3);
               break;
             }
-            //madctl = buf.b[0];
-            buflen = 0; // Disregard any further data
             break;
           }
         }
       }
     } else { // Is command
-      bufidx = 0; // Reset data recv buffer
       cmd = DECODE(ww);
       switch (cmd) {
        case COMMAND_SWRESET:
         display.setRotation(0);
-        x = y = X0 = Y0 = buflen = 0;
+        x = y = X0 = Y0 = 0;
         X1 = display.width() - 1;
         Y1 = display.height() - 1;
         break;
        case COMMAND_CASET:
-        buflen = 4; // Expecting 2 16-bit values (X0, X1)
+        bufidx = 3; // Expecting two 16-bit values (X0, X1)
         break;
        case COMMAND_PASET:
-        buflen = 4; // Expecting 2 16-bit values (Y0, Y1)
+        bufidx = 3; // Expecting two 16-bit values (Y0, Y1)
         break;
        case COMMAND_RAMWR:
-        buflen = 2; // Expecting 1+ 16-bit values
+        bufidx = 1; // Expecting one 16-bit value (or more)
         x = X0;     // Start at UL of address window
         y = Y0;
         break;
        case COMMAND_MADCTL:
-        buflen = 1; // Expecting 1 8-bit value
+        bufidx = 0; // Expecting one 8-bit value
         break;
        default:
         // Unknown or unimplemented command, discard any data that follows
-        buflen = 0;
+        bufidx = -1;
       }
     }
   }
