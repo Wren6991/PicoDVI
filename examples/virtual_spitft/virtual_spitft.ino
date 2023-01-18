@@ -1,11 +1,20 @@
 // PicoDVI-based "virtual SPITFT" display. Receives graphics commands/data
 // over 4-wire SPI interface, mimicking functionality of displays such as
-// ILI9341, but shown on monitor instead.
+// ST7789 or ILI9341, but shown on an HDMI monitor instead.
 
-// Quick-n-dirty port without regard to screen size and stuff, and
-// some pins are hardcoded and stuff. Just proof-of-concept stuff,
-// getting the Pico SDK version of this code adapted to Arduino and
-// the PicoDVI library.
+#include <PicoDVI.h> // Core display & graphics library
+
+// Configurables ----
+
+// Your basic 320x240 16-bit color display:
+DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
+// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
+//DVIGFX16 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+
+// GPIO connected to (or shared with) TFT control.
+// Careful not to overlap the DVI pins.
+#define PIN_DATA 18 // 3 contiguous pins start here: data, DC, clk
+#define PIN_CS   21 // Chip-select need not be contiguous
 
 // Output of pioasm ----
 
@@ -37,20 +46,11 @@ static inline pio_sm_config fourwire_program_get_default_config(uint offset) {
 
 // end pioasm output ----
 
-#include <PicoDVI.h> // Core display & graphics library
-
-// Your basic 320x240 16-bit color display:
-DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
-// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
-//DVIGFX16 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
-
-PIO pio = pio1;
+PIO pio = pio1; // pio0 is used by libdvi
 uint sm;
-
+uint16_t *framebuf = display.getBuffer();
 uint8_t decode[256];
 #define DECODE(w) (decode[(w & 0x55) | ((w >> 7) & 0xaa)])
-
-uint16_t *framebuf = display.getBuffer();
 
 #define BIT_DEPOSIT(b, i) ((b) ? (1<<(i)) : 0)
 #define BIT_EXTRACT(b, i) (((b) >> (i)) & 1)
@@ -65,7 +65,6 @@ uint16_t *framebuf = display.getBuffer();
     (BIT_MOVE(x, 6, 12)) | \
     (BIT_MOVE(x, 7, 14)) \
 )
-
 
 #define COMMAND_NOP     (0x00)
 #define COMMAND_SWRESET (0x01)
@@ -88,39 +87,36 @@ void setup() {
   }
 
   for(int i=0; i<256; i++) {
-    int j = (BIT_MOVE(i,  0, 0)) |
-            (BIT_MOVE(i,  2, 1)) |
-            (BIT_MOVE(i,  4, 2)) |
-            (BIT_MOVE(i,  6, 3)) |
-            (BIT_MOVE(i,  1, 4)) |
-            (BIT_MOVE(i,  3, 5)) |
-            (BIT_MOVE(i,  5, 6)) |
-            (BIT_MOVE(i,  7, 7));
+    int j = (BIT_MOVE(i, 0, 0)) |
+            (BIT_MOVE(i, 2, 1)) |
+            (BIT_MOVE(i, 4, 2)) |
+            (BIT_MOVE(i, 6, 3)) |
+            (BIT_MOVE(i, 1, 4)) |
+            (BIT_MOVE(i, 3, 5)) |
+            (BIT_MOVE(i, 5, 6)) |
+            (BIT_MOVE(i, 7, 7));
     decode[i] = j;
   }
     
   uint offset = pio_add_program(pio, &fourwire_program);
   sm = pio_claim_unused_sm(pio, true);
 
-  uint pin = 18;
-  uint jmp_pin = 21;
-
   pio_sm_config c = fourwire_program_get_default_config(offset);
 
-  // Set the IN base pin to the provided `pin` parameter. This is the data
+  // Set the IN base pin to the provided PIN_DATA parameter. This is the data
   // pin, and the next-numbered GPIO is used as the clock pin.
-  sm_config_set_in_pins(&c, pin);
-  sm_config_set_jmp_pin(&c, jmp_pin);
+  sm_config_set_in_pins(&c, PIN_DATA);
+  sm_config_set_jmp_pin(&c, PIN_CS);
   // Set the pin directions to input at the PIO
-  pio_sm_set_consecutive_pindirs(pio, sm, pin, 3, false);
-  pio_sm_set_consecutive_pindirs(pio, sm, jmp_pin, 1, false);
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_DATA, 3, false);
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_CS, 1, false);
   // Connect GPIOs to PIO block, set pulls
   for (uint8_t i=0; i<3; i++) {
-    pio_gpio_init(pio, pin + i);
-    gpio_set_pulls(pin + i, true, false);
+    pio_gpio_init(pio, PIN_DATA + i);
+    gpio_set_pulls(PIN_DATA + i, true, false);
   }
-  pio_gpio_init(pio, jmp_pin);
-  gpio_set_pulls(jmp_pin, true, false);
+  pio_gpio_init(pio, PIN_CS);
+  gpio_set_pulls(PIN_CS, true, false);
 
   // Shifting to left matches the customary MSB-first ordering of SPI.
   sm_config_set_in_shift(
