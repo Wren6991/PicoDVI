@@ -1,8 +1,12 @@
 // Double-buffered 8-bit Adafruit_GFX-compatible framebuffer for PicoDVI.
-// Allows animation without redraw flicker. Requires Adafruit_GFX 1.11.4
+// Allows animation without redraw flicker. Requires Adafruit_GFX >= 1.11.4
 
 #include <PicoDVI.h>
 
+// Double-buffered 8-bit and 1-bit are declared a little differently...
+// 8-bit requires a distinct class for double-buffering, as its memory
+// requirements are unique, while 1-bit has an extra constructor
+// argument to enable or disable this.
 //DVIGFX8x2 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
 DVIGFX8x2 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
 
