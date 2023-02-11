@@ -113,7 +113,7 @@ class DVIGFX1 : public PicoDVI, public GFXcanvas1 {
 public:
   DVIGFX1(const uint16_t w = 800, const uint16_t h = 480,
           const bool dbuf = false,
-          const struct dvi_timing &t = dvi_timing_800x600p_60hz,
+          const struct dvi_timing &t = dvi_timing_800x480p_60hz,
           vreg_voltage v = VREG_VOLTAGE_1_25,
           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
   ~DVIGFX1(void);

@@ -317,7 +317,7 @@ void DVIGFX1::swap(bool copy_framebuffer) {
 #define FONT_CHAR_HEIGHT 8
 #define FONT_N_CHARS 95
 #define FONT_FIRST_ASCII 32
-#include "../software/assets/font_8x8.h"
+#include "font_8x8.h"
 
 DVIterm1::DVIterm1(const uint16_t w, const uint16_t h,
   const struct dvi_timing &t, vreg_voltage v,
@@ -367,11 +367,11 @@ void __not_in_flash_func(DVIterm1::_mainloop)(void) {
   for (;;) {
     for (int y = 0; y < HEIGHT; y++) {
       uint16_t *row = getBuffer() + y * WIDTH;
-      for (uint8_t y1=0; y1<8; y1++) {
+      for (int y1=0; y1<8; y1++) {
         uint32_t offset = y1 * FONT_N_CHARS;
         for (uint16_t x = 0; x < WIDTH; x++) {
           uint8_t mask = row[x] >> 8;
-          uint8_t c = row[x] & 255;
+          uint8_t c = (row[x] & 255) - FONT_FIRST_ASCII;
           scanbuf[x] = font_8x8[offset + c] ^ mask;
         }
         uint32_t *tmdsbuf;
