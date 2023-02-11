@@ -24,6 +24,19 @@ protected:
   void (*mainloop)(dvi_inst *) = NULL;
 };
 
+class DVIterm1 : public PicoDVI, public GFXcanvas16 {
+public:
+  DVIterm1(const uint16_t w = 320, const uint16_t h = 240,
+           const struct dvi_timing &t = dvi_timing_640x480p_60hz,
+           vreg_voltage v = VREG_VOLTAGE_1_10,
+           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  ~DVIterm1(void);
+  bool begin(void);
+  void _prepare_scanline(uint16_t y);
+  void _mainloop(void);
+protected:
+};
+
 class DVIGFX16 : public PicoDVI, public GFXcanvas16 {
 public:
   DVIGFX16(const uint16_t w = 320, const uint16_t h = 240,
@@ -98,9 +111,9 @@ protected:
 
 class DVIGFX1 : public PicoDVI, public GFXcanvas1 {
 public:
-  DVIGFX1(const uint16_t w = 1280, const uint16_t h = 720,
+  DVIGFX1(const uint16_t w = 800, const uint16_t h = 480,
           const bool dbuf = false,
-          const struct dvi_timing &t = dvi_timing_1280x720p_30hz,
+          const struct dvi_timing &t = dvi_timing_800x600p_60hz,
           vreg_voltage v = VREG_VOLTAGE_1_25,
           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
   ~DVIGFX1(void);

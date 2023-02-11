@@ -312,3 +312,87 @@ void DVIGFX1::swap(bool copy_framebuffer) {
     }
   }
 }
+
+#define FONT_CHAR_WIDTH 8
+#define FONT_CHAR_HEIGHT 8
+#define FONT_N_CHARS 95
+#define FONT_FIRST_ASCII 32
+#include "../software/assets/font_8x8.h"
+
+DVIterm1::DVIterm1(const uint16_t w, const uint16_t h,
+  const struct dvi_timing &t, vreg_voltage v,
+  const struct dvi_serialiser_cfg &c)
+    : PicoDVI(t, v, c), GFXcanvas16(w / 8, h / 8) {
+  dvi_vertical_repeat = 1;
+  dvi_monochrome_tmds = true;
+}
+
+DVIterm1::~DVIterm1(void) {
+  gfxptr = NULL;
+}
+
+void DVIterm1::_prepare_scanline(uint16_t y) {
+  // TO DO: alloc this dynamically as part of object (maybe part of canvas)
+  //static uint8_t scanbuf[1280 / 8];
+  static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
+
+  uint16_t *base = getBuffer() + (y / FONT_CHAR_HEIGHT) * WIDTH;
+
+  // Blit font into 1bpp scanline buffer, then encode scanbuf into tmdsbuf
+  for (uint16_t i = 0; i < WIDTH; i++) {
+    uint8_t mask = base[i] >> 8;
+    uint8_t c = base[i] & 255;
+    scanbuf[i] = font_8x8[(c - FONT_FIRST_ASCII) + (y % FONT_CHAR_HEIGHT) *
+      FONT_N_CHARS] ^ mask;
+  }
+  uint32_t *tmdsbuf;
+  queue_remove_blocking(&dvi0.q_tmds_free, &tmdsbuf);
+  tmds_encode_1bpp((const uint32_t*)scanbuf, tmdsbuf, WIDTH * 8);
+  queue_add_blocking(&dvi0.q_tmds_valid, &tmdsbuf);
+}
+
+void term1_scanline_callback(void) {
+  static uint y = 1;
+  ((DVIterm1 *)gfxptr)->_prepare_scanline(y);
+  y = (y + 1) % (((DVIterm1 *)gfxptr)->height() * 8);
+}
+
+static void mainloopterm1(struct dvi_inst *inst) {
+Serial.println("D");
+  ((DVIterm1 *)gfxptr)->_mainloop();
+}
+
+void __not_in_flash_func(DVIterm1::_mainloop)(void) {
+  static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
+  for (;;) {
+    for (int y = 0; y < HEIGHT; y++) {
+      uint16_t *row = getBuffer() + y * WIDTH;
+      for (uint8_t y1=0; y1<8; y1++) {
+        uint32_t offset = y1 * FONT_N_CHARS;
+        for (uint16_t x = 0; x < WIDTH; x++) {
+          uint8_t mask = row[x] >> 8;
+          uint8_t c = row[x] & 255;
+          scanbuf[x] = font_8x8[offset + c] ^ mask;
+        }
+        uint32_t *tmdsbuf;
+        queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
+        tmds_encode_1bpp((const uint32_t *)scanbuf, tmdsbuf, WIDTH * 8);
+        queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
+      }
+    }
+  }
+}
+
+bool DVIterm1::begin(void) {
+  if ((getBuffer())) {
+    gfxptr = this;
+    mainloop = mainloopterm1;
+/*
+    dvi0.scanline_callback = term1_scanline_callback;
+*/
+    PicoDVI::begin();
+    wait_begin = false; // Set core 1 in motion
+    return true;
+  }
+  return false;
+}
