@@ -5,10 +5,11 @@
 // Subclasses then implement specific display types.
 
 static PicoDVI *dviptr = NULL; // For C access to active C++ object
+// Semaphore might be preferable, but this seems to work for now...
 static volatile bool wait_begin = true;
 
 // Runs on core 1 on startup
-void setup1(void) {
+void __not_in_flash("main") setup1(void) {
   while (wait_begin)
     ; // Wait for DVIGFX*::begin() to do its thing on core 0
   dviptr->_setup();
@@ -331,43 +332,52 @@ DVIterm1::~DVIterm1(void) {
   gfxptr = NULL;
 }
 
-void DVIterm1::_prepare_scanline(uint16_t y) {
-  // TO DO: alloc this dynamically as part of object (maybe part of canvas)
-  //static uint8_t scanbuf[1280 / 8];
-  static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
+//static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
+// TO DO: alloc this dynamically as part of object (maybe part of canvas)
+static uint8_t scanbuf[1280 / 8];
 
-  uint16_t *base = getBuffer() + (y / FONT_CHAR_HEIGHT) * WIDTH;
+void inline __not_in_flash_func(DVIterm1::_prepare_scanline)(uint16_t y) {
+  uint16_t *row = getBuffer() + (y / FONT_CHAR_HEIGHT) * WIDTH;
+  uint32_t offset = (y & 7) * FONT_N_CHARS;
 
   // Blit font into 1bpp scanline buffer, then encode scanbuf into tmdsbuf
-  for (uint16_t i = 0; i < WIDTH; i++) {
-    uint8_t mask = base[i] >> 8;
-    uint8_t c = base[i] & 255;
-    scanbuf[i] = font_8x8[(c - FONT_FIRST_ASCII) + (y % FONT_CHAR_HEIGHT) *
-      FONT_N_CHARS] ^ mask;
+  for (uint16_t x = 0; x < WIDTH; x++) {
+    uint8_t mask = row[x] >> 8;
+    uint8_t c = (row[x] & 255) - FONT_FIRST_ASCII;
+    scanbuf[x] = font_8x8[offset + c] ^ mask;
   }
   uint32_t *tmdsbuf;
-  queue_remove_blocking(&dvi0.q_tmds_free, &tmdsbuf);
+  queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
   tmds_encode_1bpp((const uint32_t*)scanbuf, tmdsbuf, WIDTH * 8);
-  queue_add_blocking(&dvi0.q_tmds_valid, &tmdsbuf);
+  queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
 }
 
-void term1_scanline_callback(void) {
+void __not_in_flash_func(term1_scanline_callback)(void) {
   static uint y = 1;
   ((DVIterm1 *)gfxptr)->_prepare_scanline(y);
   y = (y + 1) % (((DVIterm1 *)gfxptr)->height() * 8);
 }
 
 static void mainloopterm1(struct dvi_inst *inst) {
-Serial.println("D");
+  // Idle func, everything happens in interrupt
+  for (;;) delay(1000);
+}
+
+#if 0
+// Old way, without interrupt
+// This is a little simpler and might stick with it
+// since nothing important to do in idle func above.
+
+static void mainloopterm1(struct dvi_inst *inst) {
   ((DVIterm1 *)gfxptr)->_mainloop();
 }
 
 void __not_in_flash_func(DVIterm1::_mainloop)(void) {
   static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
   for (;;) {
-    for (int y = 0; y < HEIGHT; y++) {
+    for (uint16_t y = 0; y < HEIGHT; y++) {
       uint16_t *row = getBuffer() + y * WIDTH;
-      for (int y1=0; y1<8; y1++) {
+      for (uint8_t y1=0; y1<8; y1++) {
         uint32_t offset = y1 * FONT_N_CHARS;
         for (uint16_t x = 0; x < WIDTH; x++) {
           uint8_t mask = row[x] >> 8;
@@ -382,15 +392,18 @@ void __not_in_flash_func(DVIterm1::_mainloop)(void) {
     }
   }
 }
+#endif
 
-bool DVIterm1::begin(void) {
+bool __not_in_flash_func(DVIterm1::begin)(void) {
   if ((getBuffer())) {
     gfxptr = this;
-    mainloop = mainloopterm1;
-/*
     dvi0.scanline_callback = term1_scanline_callback;
-*/
+    mainloop = mainloopterm1;
     PicoDVI::begin();
+    // Must do this AFTER begin because tmdsbuf (accessed in func)
+    // doesn't exist yet until dvi_init (in begin) is called.
+    _prepare_scanline(0);
+
     wait_begin = false; // Set core 1 in motion
     return true;
   }
