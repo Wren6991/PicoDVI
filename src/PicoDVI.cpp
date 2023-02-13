@@ -27,14 +27,16 @@ static PicoDVI *dviptr = NULL; // For C access to active C++ object
 
 // Runs on core 1 on startup
 void setup1(void) {
-  delay(1);               // Required, perhaps core related
-  while (dviptr == NULL); // Wait for DVIGFX*::begin() to start on core 0
+  delay(1); // Required, perhaps core related
+  while (dviptr == NULL)
+    ; // Wait for DVIGFX*::begin() to start on core 0
   dviptr->_setup();
 }
 
 // Runs on core 1 after dviptr set
 void PicoDVI::_setup(void) {
-  while (wait_begin); // Wait for DVIGFX*::begin() to set this
+  while (wait_begin)
+    ; // Wait for DVIGFX*::begin() to set this
   dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
   dvi_start(&dvi0);
   (*mainloop)(&dvi0);
@@ -47,9 +49,7 @@ PicoDVI::PicoDVI(const struct dvi_timing &t, const struct dvi_serialiser_cfg &c,
   memcpy(&dvi0.ser_cfg, &c, sizeof dvi0.ser_cfg);
 };
 
-PicoDVI::~PicoDVI(void) {
-  dviptr = NULL;
-}
+PicoDVI::~PicoDVI(void) { dviptr = NULL; }
 
 void PicoDVI::begin(void) {
   dviptr = this;
