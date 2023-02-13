@@ -340,8 +340,8 @@ void DVIGFX1::swap(bool copy_framebuffer) {
 
 #define FONT_CHAR_WIDTH 8
 #define FONT_CHAR_HEIGHT 8
-#define FONT_N_CHARS 95
-#define FONT_FIRST_ASCII 32
+#define FONT_N_CHARS 256
+#define FONT_FIRST_ASCII 0
 #include "font_8x8.h"
 
 DVIterm1::DVIterm1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
