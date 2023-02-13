@@ -34,6 +34,7 @@ protected:
   vreg_voltage voltage;
   struct dvi_inst dvi0;
   void (*mainloop)(dvi_inst *) = NULL;
+  volatile bool wait_begin = true;
 };
 
 class DVIGFX16 : public PicoDVI, public GFXcanvas16 {

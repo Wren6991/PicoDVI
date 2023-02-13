@@ -24,18 +24,17 @@ static struct {
 };
 
 static PicoDVI *dviptr = NULL; // For C access to active C++ object
-// Semaphore might be preferable, but this seems to work for now...
-static volatile bool wait_begin = true;
 
 // Runs on core 1 on startup
 void setup1(void) {
-  while (wait_begin)
-    ; // Wait for DVIGFX*::begin() to do its thing on core 0
+  delay(1);               // Required, perhaps core related
+  while (dviptr == NULL); // Wait for DVIGFX*::begin() to start on core 0
   dviptr->_setup();
 }
 
-// Runs on core 1 after wait_begin released
+// Runs on core 1 after dviptr set
 void PicoDVI::_setup(void) {
+  while (wait_begin); // Wait for DVIGFX*::begin() to set this
   dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
   dvi_start(&dvi0);
   (*mainloop)(&dvi0);
@@ -50,7 +49,6 @@ PicoDVI::PicoDVI(const struct dvi_timing &t, const struct dvi_serialiser_cfg &c,
 
 PicoDVI::~PicoDVI(void) {
   dviptr = NULL;
-  wait_begin = true;
 }
 
 void PicoDVI::begin(void) {
