@@ -13,6 +13,8 @@ enum DVIresolution {
   DVI_RES_400x240p60,
   DVI_RES_640x480p60,
   DVI_RES_800x480p60,
+  DVI_RES_640x240p60, // "Tall" pixels, e.g. for 80-column text mode
+  DVI_RES_800x240p60, // " 100-column
   DVI_RES_1280x720p30 // Experimenting, plz don't use
 };
 
@@ -128,6 +130,7 @@ public:
            vreg_voltage v = VREG_VOLTAGE_1_20);
   ~DVIterm1(void);
   bool begin(void);
+  size_t write(uint8_t c);
   void _prepare_scanline(uint16_t y);
   void _mainloop(void);
 

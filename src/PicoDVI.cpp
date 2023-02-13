@@ -15,6 +15,8 @@ static struct {
     {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 400, 240, 2},
     {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 640, 480, 1},
     {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 800, 480, 1},
+    {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 640, 240, 2},
+    {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 800, 240, 2},
     // Additional resolutions might get added here if the overclock issue can
     // be sorted out. Regardless, always keep this list 1:1 in sync with the
     // DVIresolution enum in PicoDVI.h.
@@ -334,6 +336,8 @@ void DVIGFX1::swap(bool copy_framebuffer) {
   }
 }
 
+// TEXT MODE IS A WORK IN PROGRESS
+
 #define FONT_CHAR_WIDTH 8
 #define FONT_CHAR_HEIGHT 8
 #define FONT_N_CHARS 95
@@ -349,6 +353,27 @@ DVIterm1::DVIterm1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
 }
 
 DVIterm1::~DVIterm1(void) { gfxptr = NULL; }
+
+// Character framebuffer is actually a small GFXcanvas16, so...
+size_t DVIterm1::write(uint8_t c) {
+  if (c == '\r') { // Carriage return
+    cursor_x = 0;
+  } else if ((c == '\n') || (cursor_x >= WIDTH)) { // Newline OR right edge
+    cursor_x = 0;
+    if (cursor_y >= HEIGHT) { // Vert scroll?
+      memmove(getBuffer(), getBuffer() + WIDTH, WIDTH * (HEIGHT - 1) * 2);
+      drawFastHLine(0, HEIGHT - 1, WIDTH, ' '); // Clear bottom line
+      cursor_y = HEIGHT - 1;
+    } else {
+      cursor_y++;
+    }
+  }
+  if ((c != '\r') && (c != '\n')) {
+    drawPixel(cursor_x, cursor_y, c);
+    cursor_x++;
+  }
+  return 1;
+}
 
 // TO DO: alloc this dynamically as part of object (maybe part of canvas)
 static uint8_t scanbuf[1280 / 8] __attribute__((aligned(4)));
@@ -417,6 +442,7 @@ void __not_in_flash_func(DVIterm1::_mainloop)(void) {
 
 bool DVIterm1::begin(void) {
   if ((getBuffer())) {
+    fillScreen(' ');
     gfxptr = this;
 #ifdef TERM_USE_INTERRUPT
     dvi0.scanline_callback = term1_scanline_callback;
