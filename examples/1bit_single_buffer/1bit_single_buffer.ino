@@ -2,8 +2,8 @@
 
 #include <PicoDVI.h>
 
-//DVIGFX1 display(640, 480, false, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
-DVIGFX1 display(800, 480, false, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+// 1-bit currently supports 640x480 and 800x480 resolutions only.
+DVIGFX1 display(DVI_RES_800x480p60, false, pimoroni_demo_hdmi_cfg);
 
 void setup() {
   Serial.begin(115200);

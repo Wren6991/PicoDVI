@@ -2,8 +2,8 @@
 
 #include <PicoDVI.h>
 
-DVIGFX8 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
-//DVIGFX8 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+// 8-bit currently supports 320x240 and 400x240 resolutions only.
+DVIGFX8 display(DVI_RES_400x240p60, pimoroni_demo_hdmi_cfg);
 
 void setup() {
   Serial.begin(115200);

@@ -5,9 +5,8 @@
 #include <Fonts/FreeSansBold18pt7b.h> // A custom font
 
 // Your basic 320x240 16-bit color display:
-DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
-// Not all RP2040s can deal with the 295 MHz overclock this requires, but if you'd like to try:
-//DVIGFX16 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+DVIGFX16 display(DVI_RES_320x240p60, pimoroni_demo_hdmi_cfg);
+// 16-bit currently supports 320x240 and 400x240 resolutions only.
 
 void setup() {
   Serial.begin(115200);

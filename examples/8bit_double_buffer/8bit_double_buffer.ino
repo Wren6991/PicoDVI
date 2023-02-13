@@ -7,8 +7,8 @@
 // 8-bit requires a distinct class for double-buffering, as its memory
 // requirements are unique, while 1-bit has an extra constructor
 // argument to enable or disable this.
-//DVIGFX8x2 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
-DVIGFX8x2 display(400, 240, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+// 8-bit currently supports 320x240 and 400x240 resolutions only.
+DVIGFX8x2 display(DVI_RES_400x240p60, pimoroni_demo_hdmi_cfg);
 
 #define N_BALLS 100 // 1-254 (not 255)
 struct {

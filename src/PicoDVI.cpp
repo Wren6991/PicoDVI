@@ -4,12 +4,29 @@
 // PicoDVI class encapsulates some of the libdvi functionality -------------
 // Subclasses then implement specific display types.
 
+static struct {
+  const dvi_timing &timing;
+  vreg_voltage v;
+  uint16_t width;
+  uint16_t height;
+  uint8_t v_rep;
+} dvispec[] = {
+    {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 320, 240, 2},
+    {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 400, 240, 2},
+    {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 640, 480, 1},
+    {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 800, 480, 1},
+    // Additional resolutions might get added here if the overclock issue can
+    // be sorted out. Regardless, always keep this list 1:1 in sync with the
+    // DVIresolution enum in PicoDVI.h.
+    {dvi_timing_1280x720p_30hz, VREG_VOLTAGE_1_30, 1280, 720, 1},
+};
+
 static PicoDVI *dviptr = NULL; // For C access to active C++ object
 // Semaphore might be preferable, but this seems to work for now...
 static volatile bool wait_begin = true;
 
 // Runs on core 1 on startup
-void __not_in_flash("main") setup1(void) {
+void setup1(void) {
   while (wait_begin)
     ; // Wait for DVIGFX*::begin() to do its thing on core 0
   dviptr->_setup();
@@ -22,8 +39,8 @@ void PicoDVI::_setup(void) {
   (*mainloop)(&dvi0);
 }
 
-PicoDVI::PicoDVI(const struct dvi_timing &t, vreg_voltage v,
-                 const struct dvi_serialiser_cfg &c)
+PicoDVI::PicoDVI(const struct dvi_timing &t, const struct dvi_serialiser_cfg &c,
+                 vreg_voltage v)
     : voltage(v) {
   dvi0.timing = &t;
   memcpy(&dvi0.ser_cfg, &c, sizeof dvi0.ser_cfg);
@@ -46,11 +63,11 @@ void PicoDVI::begin(void) {
 
 static void *gfxptr = NULL; // For C access to active C++ object
 
-DVIGFX16::DVIGFX16(const uint16_t w, const uint16_t h,
-                   const struct dvi_timing &t, vreg_voltage v,
-                   const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas16(w, h) {
-  dvi_vertical_repeat = 2;
+DVIGFX16::DVIGFX16(const DVIresolution r, const struct dvi_serialiser_cfg &c,
+                   vreg_voltage v)
+    : PicoDVI(dvispec[r].timing, c, v),
+      GFXcanvas16(dvispec[r].width, dvispec[r].height) {
+  dvi_vertical_repeat = dvispec[r].v_rep;
   dvi_monochrome_tmds = false;
 }
 
@@ -103,11 +120,12 @@ bool DVIGFX16::begin(void) {
 // HEIGHT value is de-tweaked to the original value so clipping won't allow
 // any drawing operations to spill into the 16-bit scanlines.
 
-DVIGFX8::DVIGFX8(const uint16_t w, const uint16_t h, const struct dvi_timing &t,
-                 vreg_voltage v, const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas8(w, ((h + 1) & ~1) + 4) {
-  HEIGHT = _height = h;
-  dvi_vertical_repeat = 2;
+DVIGFX8::DVIGFX8(const DVIresolution r, const struct dvi_serialiser_cfg &c,
+                 vreg_voltage v)
+    : PicoDVI(dvispec[r].timing, c, v),
+      GFXcanvas8(dvispec[r].width, ((dvispec[r].height + 1) & ~1) + 4) {
+  HEIGHT = _height = dvispec[r].height;
+  dvi_vertical_repeat = dvispec[r].v_rep;
   dvi_monochrome_tmds = false;
 }
 
@@ -163,13 +181,13 @@ bool DVIGFX8::begin(void) {
 // "back" state. Call swap() to switch the front/back buffers at the next
 // vertical sync, for flicker-free and tear-free animation.
 
-DVIGFX8x2::DVIGFX8x2(const uint16_t w, const uint16_t h,
-                     const struct dvi_timing &t, vreg_voltage v,
-                     const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas8(w, h * 2 + 4) {
-  HEIGHT = _height = h;
+DVIGFX8x2::DVIGFX8x2(const DVIresolution r, const struct dvi_serialiser_cfg &c,
+                     vreg_voltage v)
+    : PicoDVI(dvispec[r].timing, c, v),
+      GFXcanvas8(dvispec[r].width, dvispec[r].height * 2 + 4) {
+  HEIGHT = _height = dvispec[r].height;
   buffer_save = buffer;
-  dvi_vertical_repeat = 2;
+  dvi_vertical_repeat = dvispec[r].v_rep;
   dvi_monochrome_tmds = false;
 }
 
@@ -249,13 +267,15 @@ void DVIGFX8x2::swap(bool copy_framebuffer, bool copy_palette) {
 
 // 1-bit WIP --------
 
-DVIGFX1::DVIGFX1(const uint16_t w, const uint16_t h, const bool d,
-                 const struct dvi_timing &t, vreg_voltage v,
-                 const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas1(w, d ? (h * 2) : h), dbuf(d) {
-  dvi_vertical_repeat = 1;
+DVIGFX1::DVIGFX1(const DVIresolution r, const bool d,
+                 const struct dvi_serialiser_cfg &c, vreg_voltage v)
+    : PicoDVI(dvispec[r].timing, c, v),
+      GFXcanvas1(dvispec[r].width,
+                 d ? (dvispec[r].height * 2) : dvispec[r].height),
+      dbuf(d) {
+  dvi_vertical_repeat = dvispec[r].v_rep;
   dvi_monochrome_tmds = true;
-  HEIGHT = _height = h;
+  HEIGHT = _height = dvispec[r].height;
   buffer_save = buffer;
 }
 
@@ -320,21 +340,20 @@ void DVIGFX1::swap(bool copy_framebuffer) {
 #define FONT_FIRST_ASCII 32
 #include "font_8x8.h"
 
-DVIterm1::DVIterm1(const uint16_t w, const uint16_t h,
-  const struct dvi_timing &t, vreg_voltage v,
-  const struct dvi_serialiser_cfg &c)
-    : PicoDVI(t, v, c), GFXcanvas16(w / 8, h / 8) {
-  dvi_vertical_repeat = 1;
+DVIterm1::DVIterm1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
+                   vreg_voltage v)
+    : PicoDVI(dvispec[r].timing, c, v),
+      GFXcanvas16(dvispec[r].width / 8, dvispec[r].height / 8) {
+  dvi_vertical_repeat = dvispec[r].v_rep;
   dvi_monochrome_tmds = true;
 }
 
-DVIterm1::~DVIterm1(void) {
-  gfxptr = NULL;
-}
+DVIterm1::~DVIterm1(void) { gfxptr = NULL; }
 
-//static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
 // TO DO: alloc this dynamically as part of object (maybe part of canvas)
-static uint8_t scanbuf[1280 / 8];
+static uint8_t scanbuf[1280 / 8] __attribute__((aligned(4)));
+
+#ifdef TERM_USE_INTERRUPT
 
 void inline __not_in_flash_func(DVIterm1::_prepare_scanline)(uint16_t y) {
   uint16_t *row = getBuffer() + (y / FONT_CHAR_HEIGHT) * WIDTH;
@@ -348,7 +367,7 @@ void inline __not_in_flash_func(DVIterm1::_prepare_scanline)(uint16_t y) {
   }
   uint32_t *tmdsbuf;
   queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmdsbuf);
-  tmds_encode_1bpp((const uint32_t*)scanbuf, tmdsbuf, WIDTH * 8);
+  tmds_encode_1bpp((const uint32_t *)scanbuf, tmdsbuf, WIDTH * 8);
   queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
 }
 
@@ -360,10 +379,12 @@ void __not_in_flash_func(term1_scanline_callback)(void) {
 
 static void mainloopterm1(struct dvi_inst *inst) {
   // Idle func, everything happens in interrupt
-  for (;;) delay(1000);
+  for (;;)
+    delay(1000);
 }
 
-#if 0
+#else
+
 // Old way, without interrupt
 // This is a little simpler and might stick with it
 // since nothing important to do in idle func above.
@@ -373,11 +394,10 @@ static void mainloopterm1(struct dvi_inst *inst) {
 }
 
 void __not_in_flash_func(DVIterm1::_mainloop)(void) {
-  static uint8_t scanbuf[1280 / 8] __attribute__ ((aligned (4)));
   for (;;) {
     for (uint16_t y = 0; y < HEIGHT; y++) {
       uint16_t *row = getBuffer() + y * WIDTH;
-      for (uint8_t y1=0; y1<8; y1++) {
+      for (uint8_t y1 = 0; y1 < 8; y1++) {
         uint32_t offset = y1 * FONT_N_CHARS;
         for (uint16_t x = 0; x < WIDTH; x++) {
           uint8_t mask = row[x] >> 8;
@@ -392,17 +412,23 @@ void __not_in_flash_func(DVIterm1::_mainloop)(void) {
     }
   }
 }
-#endif
 
-bool __not_in_flash_func(DVIterm1::begin)(void) {
+#endif // end TERM_USE_INTERRUPT
+
+bool DVIterm1::begin(void) {
   if ((getBuffer())) {
     gfxptr = this;
+#ifdef TERM_USE_INTERRUPT
     dvi0.scanline_callback = term1_scanline_callback;
+#endif
     mainloop = mainloopterm1;
     PicoDVI::begin();
+
     // Must do this AFTER begin because tmdsbuf (accessed in func)
     // doesn't exist yet until dvi_init (in begin) is called.
+#ifdef TERM_USE_INTERRUPT
     _prepare_scanline(0);
+#endif
 
     wait_begin = false; // Set core 1 in motion
     return true;

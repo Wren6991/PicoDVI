@@ -4,10 +4,10 @@
 #include <PicoDVI.h>
 
 // Double-buffered 1-bit and 8-bit are declared a little differently...
-// 1-bit accepts a boolean after the the canvas dimensions to enable/disable
+// 1-bit accepts a boolean after the the resolution to enable/disable
 // double-buffering, whereas 8-bit double-buffered uses a distinct class.
-//DVIGFX1 display(640, 480, true, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
-DVIGFX1 display(800, 480, true, dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_30, pimoroni_demo_hdmi_cfg);
+// 1-bit currently supports 640x480 and 800x480 resolutions only.
+DVIGFX1 display(DVI_RES_800x480p60, true, pimoroni_demo_hdmi_cfg);
 
 #define N_BALLS 100
 struct {

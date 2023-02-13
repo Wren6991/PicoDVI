@@ -6,14 +6,24 @@
 #include "pico/stdlib.h" // In Pico SDK
 #include <Adafruit_GFX.h>
 
+// A set list of resolutions keeps things manageable for users,
+// avoids some possibly-incompatible argument combos to constructors.
+enum DVIresolution {
+  DVI_RES_320x240p60 = 0,
+  DVI_RES_400x240p60,
+  DVI_RES_640x480p60,
+  DVI_RES_800x480p60,
+  DVI_RES_1280x720p30 // Experimenting, plz don't use
+};
+
 extern uint8_t dvi_vertical_repeat; // In libdvi/dvi.c
 extern bool dvi_monochrome_tmds;    // In libdvi/dvi.c
 
 class PicoDVI {
 public:
-  PicoDVI(const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-          vreg_voltage v = VREG_VOLTAGE_1_10,
-          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  PicoDVI(const struct dvi_timing &t = dvi_timing_800x480p_60hz,
+          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
+          vreg_voltage v = VREG_VOLTAGE_1_20);
   ~PicoDVI(void);
   void _setup(void);
 
@@ -24,25 +34,11 @@ protected:
   void (*mainloop)(dvi_inst *) = NULL;
 };
 
-class DVIterm1 : public PicoDVI, public GFXcanvas16 {
-public:
-  DVIterm1(const uint16_t w = 320, const uint16_t h = 240,
-           const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-           vreg_voltage v = VREG_VOLTAGE_1_10,
-           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
-  ~DVIterm1(void);
-  bool begin(void);
-  void _prepare_scanline(uint16_t y);
-  void _mainloop(void);
-protected:
-};
-
 class DVIGFX16 : public PicoDVI, public GFXcanvas16 {
 public:
-  DVIGFX16(const uint16_t w = 320, const uint16_t h = 240,
-           const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-           vreg_voltage v = VREG_VOLTAGE_1_10,
-           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  DVIGFX16(const DVIresolution res = DVI_RES_400x240p60,
+           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
+           vreg_voltage v = VREG_VOLTAGE_1_20);
   ~DVIGFX16(void);
   bool begin(void);
   uint16_t color565(uint8_t red, uint8_t green, uint8_t blue) {
@@ -56,10 +52,9 @@ protected:
 
 class DVIGFX8 : public PicoDVI, public GFXcanvas8 {
 public:
-  DVIGFX8(const uint16_t w = 320, const uint16_t h = 240,
-          const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-          vreg_voltage v = VREG_VOLTAGE_1_10,
-          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  DVIGFX8(const DVIresolution res = DVI_RES_400x240p60,
+          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
+          vreg_voltage v = VREG_VOLTAGE_1_20);
   ~DVIGFX8(void);
   bool begin(void);
   uint16_t *getPalette(void) { return palette; }
@@ -80,10 +75,9 @@ protected:
 
 class DVIGFX8x2 : public PicoDVI, public GFXcanvas8 {
 public:
-  DVIGFX8x2(const uint16_t w = 320, const uint16_t h = 240,
-            const struct dvi_timing &t = dvi_timing_640x480p_60hz,
-            vreg_voltage v = VREG_VOLTAGE_1_10,
-            const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  DVIGFX8x2(const DVIresolution res = DVI_RES_400x240p60,
+            const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
+            vreg_voltage v = VREG_VOLTAGE_1_20);
   ~DVIGFX8x2(void);
   bool begin(void);
   uint16_t *getPalette(void) { return palette[back_index]; }
@@ -111,11 +105,9 @@ protected:
 
 class DVIGFX1 : public PicoDVI, public GFXcanvas1 {
 public:
-  DVIGFX1(const uint16_t w = 800, const uint16_t h = 480,
-          const bool dbuf = false,
-          const struct dvi_timing &t = dvi_timing_800x480p_60hz,
-          vreg_voltage v = VREG_VOLTAGE_1_25,
-          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg);
+  DVIGFX1(const DVIresolution res = DVI_RES_800x480p60, const bool dbuf = false,
+          const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
+          vreg_voltage v = VREG_VOLTAGE_1_20);
   ~DVIGFX1(void);
   bool begin(void);
   void swap(bool copy_framebuffer = false);
@@ -127,4 +119,17 @@ private:
   uint8_t *buffer_save;        // Original canvas buffer pointer
   uint8_t back_index = 0;      // Which of 2 buffers receives draw ops
   volatile bool swap_wait = 0; // For syncronizing front/back buffer swap
+};
+
+class DVIterm1 : public PicoDVI, public GFXcanvas16 {
+public:
+  DVIterm1(const DVIresolution res = DVI_RES_400x240p60,
+           const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
+           vreg_voltage v = VREG_VOLTAGE_1_20);
+  ~DVIterm1(void);
+  bool begin(void);
+  void _prepare_scanline(uint16_t y);
+  void _mainloop(void);
+
+protected:
 };

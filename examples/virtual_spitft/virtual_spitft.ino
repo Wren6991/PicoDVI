@@ -11,8 +11,8 @@
 #define PIN_DATA 18 // 3 contiguous pins start here: data, DC, clk
 #define PIN_CS   21 // Chip-select need not be contiguous
 
-// 320x240 16-bit color display:
-DVIGFX16 display(320, 240, dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, pimoroni_demo_hdmi_cfg);
+// 320x240 16-bit color display (to match common TFT display resolution):
+DVIGFX16 display(DVI_RES_320x240p60, pimoroni_demo_hdmi_cfg);
 
 // Output of pioasm ----
 
