@@ -357,7 +357,7 @@ size_t DVIterm1::write(uint8_t c) {
     cursor_x = 0;
   } else if ((c == '\n') || (cursor_x >= WIDTH)) { // Newline OR right edge
     cursor_x = 0;
-    if (cursor_y >= HEIGHT) { // Vert scroll?
+    if (cursor_y >= (HEIGHT - 1)) { // Vert scroll?
       memmove(getBuffer(), getBuffer() + WIDTH, WIDTH * (HEIGHT - 1) * 2);
       drawFastHLine(0, HEIGHT - 1, WIDTH, ' '); // Clear bottom line
       cursor_y = HEIGHT - 1;
