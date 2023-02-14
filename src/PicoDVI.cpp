@@ -27,9 +27,8 @@ static PicoDVI *dviptr = NULL; // For C access to active C++ object
 
 // Runs on core 1 on startup
 void setup1(void) {
-  delay(1); // Required, perhaps core related
-  while (dviptr == NULL)
-    ; // Wait for PicoDVI::begin() to start on core 0
+  while (dviptr == NULL) // Wait for PicoDVI::begin() to start on core 0
+    yield();
   dviptr->_setup();
 }
 
