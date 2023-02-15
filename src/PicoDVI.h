@@ -102,12 +102,12 @@ private:
   volatile bool swap_wait = 0; // For syncronizing front/back buffer swap
 };
 
-class DVIterm1 : public PicoDVI, public GFXcanvas16 {
+class DVItext1 : public PicoDVI, public GFXcanvas16 {
 public:
-  DVIterm1(const DVIresolution res = DVI_RES_400x240p60,
+  DVItext1(const DVIresolution res = DVI_RES_400x240p60,
            const struct dvi_serialiser_cfg &c = pimoroni_demo_hdmi_cfg,
            vreg_voltage v = VREG_VOLTAGE_1_20);
-  ~DVIterm1(void);
+  ~DVItext1(void);
   bool begin(void);
   size_t write(uint8_t c);
   void _prepare_scanline(uint16_t y);

@@ -290,7 +290,7 @@ void DVIGFX1::swap(bool copy_framebuffer) {
 #define FONT_FIRST_ASCII 0
 #include "font_8x8.h"
 
-DVIterm1::DVIterm1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
+DVItext1::DVItext1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
                    vreg_voltage v)
     : PicoDVI(dvispec[r].timing, c, v),
       GFXcanvas16(dvispec[r].width / 8, dvispec[r].height / 8) {
@@ -298,10 +298,10 @@ DVIterm1::DVIterm1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
   dvi_monochrome_tmds = true;
 }
 
-DVIterm1::~DVIterm1(void) { gfxptr = NULL; }
+DVItext1::~DVItext1(void) { gfxptr = NULL; }
 
 // Character framebuffer is actually a small GFXcanvas16, so...
-size_t DVIterm1::write(uint8_t c) {
+size_t DVItext1::write(uint8_t c) {
   if (c == '\r') { // Carriage return
     cursor_x = 0;
   } else if ((c == '\n') || (cursor_x >= WIDTH)) { // Newline OR right edge
@@ -326,7 +326,7 @@ static uint8_t scanbuf[1280 / 8] __attribute__((aligned(4)));
 
 #ifdef TERM_USE_INTERRUPT
 
-void inline __not_in_flash_func(DVIterm1::_prepare_scanline)(uint16_t y) {
+void inline __not_in_flash_func(DVItext1::_prepare_scanline)(uint16_t y) {
   uint16_t *row = getBuffer() + (y / FONT_CHAR_HEIGHT) * WIDTH;
   uint32_t offset = (y & 7) * FONT_N_CHARS;
 
@@ -342,13 +342,13 @@ void inline __not_in_flash_func(DVIterm1::_prepare_scanline)(uint16_t y) {
   queue_add_blocking_u32(&dvi0.q_tmds_valid, &tmdsbuf);
 }
 
-void __not_in_flash_func(term1_scanline_callback)(void) {
+void __not_in_flash_func(text1_scanline_callback)(void) {
   static uint y = 1;
-  ((DVIterm1 *)gfxptr)->_prepare_scanline(y);
-  y = (y + 1) % (((DVIterm1 *)gfxptr)->height() * 8);
+  ((DVItext1 *)gfxptr)->_prepare_scanline(y);
+  y = (y + 1) % (((DVItext1 *)gfxptr)->height() * 8);
 }
 
-static void mainloopterm1(struct dvi_inst *inst) {
+static void mainlooptext1(struct dvi_inst *inst) {
   // Idle func, everything happens in interrupt
   for (;;)
     delay(1000);
@@ -360,11 +360,11 @@ static void mainloopterm1(struct dvi_inst *inst) {
 // This is a little simpler and might stick with it
 // since nothing important to do in idle func above.
 
-static void mainloopterm1(struct dvi_inst *inst) {
-  ((DVIterm1 *)gfxptr)->_mainloop();
+static void mainlooptext1(struct dvi_inst *inst) {
+  ((DVItext1 *)gfxptr)->_mainloop();
 }
 
-void __not_in_flash_func(DVIterm1::_mainloop)(void) {
+void __not_in_flash_func(DVItext1::_mainloop)(void) {
   for (;;) {
     for (uint16_t y = 0; y < HEIGHT; y++) {
       uint16_t *row = getBuffer() + y * WIDTH;
@@ -386,14 +386,14 @@ void __not_in_flash_func(DVIterm1::_mainloop)(void) {
 
 #endif // end TERM_USE_INTERRUPT
 
-bool DVIterm1::begin(void) {
+bool DVItext1::begin(void) {
   if ((getBuffer())) {
     fillScreen(' ');
     gfxptr = this;
 #ifdef TERM_USE_INTERRUPT
-    dvi0.scanline_callback = term1_scanline_callback;
+    dvi0.scanline_callback = text1_scanline_callback;
 #endif
-    mainloop = mainloopterm1;
+    mainloop = mainlooptext1;
     PicoDVI::begin();
 
     // Must do this AFTER begin because tmdsbuf (accessed in func)
