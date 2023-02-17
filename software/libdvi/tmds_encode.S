@@ -372,24 +372,30 @@ tmds_2bpp_table:
 // Here is an idea
 // Have a table with a 7 bit lookup. The lookup is the 6 colour data bits (in
 // ACCUM0), concatenated with the sign bit of our running disparity (from
-// ACCUM1). Each table entry is a 20-bit TMDS symbol (pseudodifferential),
-// with the symbol's disparity stored left-justified in the upper 12 bits, as
-// e.g. a 6 bit signed integer.
+// ACCUM1). Each table entry is a 10-bit TMDS symbol, with the symbol's disparity 
+// stored left-justified in the upper bits, as e.g. a 5 bit signed integer.
 //
-// - Load pixel data.                        cyc: 0.75 (ldmia 2 words, every 4 pixels)
+// We have 2 copies of the table, one with the TMDS symbol aligned to the right
+// and one shifted 10 bits left.  This means they can be ORed together to form
+// 2 symbols in one word.
+//
+// - Load pixel data.                        cyc: 0.625 (ldmia 4 words, every 8 pixels)
 // - Write pixel to ACCUM0.                  cyc: 1
 // - Read address from PEEK2.                cyc: 1
 // - Load encoded pixel from address.        cyc: 2
 // - Write disparity data to ACCUM1_ADD      cyc: 1
-// - Write encoded data to output buffer.    cyc: 1.25 (stmia 4 words, every 4 pixels)
+// - OR every 2 pix                          cyc: 0.5
+// - Write encoded data to output buffer.    cyc: 0.625 (stmia 4 words, every 8 pixels)
 //
-// With decent register allocation we may be able to load 4 pixels at
-// once (2 words), and write 4 at once (4 words). This gives 7 cyc/pix.
+// With decent register allocation we can load 8 pixels at once (4 words), 
+// and write 8 at once (4 words). This gives 6.75 cyc/pix.
 //
 // One issue is that the TMDS data in the bottom of ACCUM1 will eventually
-// overflow and affect the running disparity, but with 16 zeroes in between,
-// this would take much longer than one scanline, so everything is fine if
-// we clear the accumulator at the start of the scanline.
+// overflow and affect the running disparity. For the right aligned symbols there are
+// 16 zeroes in between, so this would take much longer than one scanline, so 
+// everything is fine if we clear the accumulator at the start of the scanline.
+// For the shifted symbols this overflows after 128 symbols, so we need to clear the
+// bottom bits of the accumulator more often than that.
 //
 // Note that we need to use two interpolators to get the bits from both pixels
 // -- we are not outputting a single DC-balanced stream, but rather two
@@ -404,19 +410,20 @@ tmds_2bpp_table:
 // much better, and many monitors will still accept the signals as long as you
 // DC couple your DVI signals.
 
-.macro tmds_fullres_encode_loop_body ra rb
-	str \ra, [r2, #ACCUM0_OFFS + INTERP1]
-	str \ra, [r2, #ACCUM0_OFFS]
-	ldr \ra, [r2, #PEEK2_OFFS]
-	ldr \ra, [\ra]
+.macro tmds_fullres_encode_loop_body rd
+	str \rd, [r2, #ACCUM0_OFFS + INTERP1]
+	str \rd, [r2, #ACCUM0_OFFS]
+	ldr \rd, [r2, #PEEK2_OFFS]
+	ldr \rd, [\rd]
 #if !TMDS_FULLRES_NO_DC_BALANCE
-	str \ra, [r2, #ACCUM1_ADD_OFFS]
+	str \rd, [r2, #ACCUM1_ADD_OFFS]
 #endif
-	ldr \rb, [r2, #PEEK2_OFFS + INTERP1]
-	ldr \rb, [\rb]
+	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
+	ldr r7, [r7]
 #if !TMDS_FULLRES_NO_DC_BALANCE
-	str \rb, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
+	orrs \rd, r7
 .endm
 
 // r0: Input buffer (word-aligned)
@@ -429,7 +436,7 @@ tmds_2bpp_table:
 	push {r4}
 
 
-	lsls r2, #2
+	lsls r2, #1
 	add r2, r1
 	mov ip, r2
 	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
@@ -449,12 +456,21 @@ tmds_2bpp_table:
 	b 2f
 	.align 2
 1:
-.rept 16
-	ldmia r0!, {r4, r6}
-	tmds_fullres_encode_loop_body r4 r5
-	tmds_fullres_encode_loop_body r6 r7
-	stmia r1!, {r4, r5, r6, r7}
+.rept 10 // 80 pixels per iteration
+	ldmia r0!, {r3, r4, r5, r6}
+	tmds_fullres_encode_loop_body r3
+	tmds_fullres_encode_loop_body r4
+	tmds_fullres_encode_loop_body r5
+	tmds_fullres_encode_loop_body r6
+	stmia r1!, {r3, r4, r5, r6}
 .endr
+	// Need to clear the bottom of the balance tracker for interp1 as the 
+	// otherwise the shifted TMDS symbols will overflow
+	ldr r7, [r2, #ACCUM1_OFFS + INTERP1]
+	movs r6, #0x1F
+	lsls r6, #27
+	ands r7, r6
+	str r7, [r2, #ACCUM1_OFFS + INTERP1]
 2:
 	cmp r1, ip
 	beq 1f
@@ -472,21 +488,22 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	tmds_fullres_encode_loop_16bpp
 
 
-.macro tmds_fullres_encode_loop_body_leftshift ra rb
+.macro tmds_fullres_encode_loop_body_leftshift rd
 	// Note we apply the leftshift for INTERP0 only
-	str \ra, [r2, #ACCUM0_OFFS + INTERP1]
-	lsls \ra, r3
-	str \ra, [r2, #ACCUM0_OFFS]
-	ldr \ra, [r2, #PEEK2_OFFS]
-	ldr \ra, [\ra]
+	str \rd, [r2, #ACCUM0_OFFS + INTERP1]
+	lsls \rd, r3
+	str \rd, [r2, #ACCUM0_OFFS]
+	ldr \rd, [r2, #PEEK2_OFFS]
+	ldr \rd, [\rd]
 #if !TMDS_FULLRES_NO_DC_BALANCE
-	str \ra, [r2, #ACCUM1_ADD_OFFS]
+	str \rd, [r2, #ACCUM1_ADD_OFFS]
 #endif
-	ldr \rb, [r2, #PEEK2_OFFS + INTERP1]
-	ldr \rb, [\rb]
+	ldr r7, [r2, #PEEK2_OFFS + INTERP1]
+	ldr r7, [r7]
 #if !TMDS_FULLRES_NO_DC_BALANCE
-	str \rb, [r2, #ACCUM1_ADD_OFFS + INTERP1]
+	str r7, [r2, #ACCUM1_ADD_OFFS + INTERP1]
 #endif
+	orrs \rd, r7
 .endm
 
 // r0: Input buffer (word-aligned)
@@ -500,7 +517,7 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	mov r5, r9
 	push {r4-r5}
 
-	lsls r2, #2
+	lsls r2, #1
 	add r2, r1
 	mov ip, r2
 	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
@@ -519,12 +536,24 @@ decl_func_y tmds_fullres_encode_loop_16bpp_y
 	b 2f
 	.align 2
 1:
-.rept 16 // 64 pixels per iteration
-	ldmia r0!, {r4, r6}
-	tmds_fullres_encode_loop_body_leftshift r4 r5
-	tmds_fullres_encode_loop_body_leftshift r6 r7
-	stmia r1!, {r4, r5, r6, r7}
+.rept 13 // 80 pixels per iteration
+	ldmia r0!, {r4, r5, r6}
+	tmds_fullres_encode_loop_body_leftshift r4
+	tmds_fullres_encode_loop_body_leftshift r5
+	tmds_fullres_encode_loop_body_leftshift r6
+	stmia r1!, {r4, r5, r6}
 .endr
+	ldmia r0!, {r4}
+	tmds_fullres_encode_loop_body_leftshift r4
+	stmia r1!, {r4}
+
+	// Need to clear the bottom of the balance tracker for interp1 as the 
+	// otherwise the shifted TMDS symbols will overflow
+	ldr r7, [r2, #ACCUM1_OFFS + INTERP1]
+	movs r6, #0x1F
+	lsls r6, #27
+	ands r7, r6
+	str r7, [r2, #ACCUM1_OFFS + INTERP1]
 2:
 	cmp r1, ip
 	beq 1f

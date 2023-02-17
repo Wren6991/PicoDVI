@@ -7,16 +7,22 @@ static const uint32_t __scratch_x("tmds_table") tmds_table[] = {
 #include "tmds_table.h"
 };
 
-// Fullres table is bandwidth-critical, so gets one copy for each scratch
-// memory. There is a third copy which can go in flash, because it's just used
-// to generate palette LUTs. The ones we don't use will get garbage collected
-// during linking.
+// Fullres tables are bandwidth-critical, so gets one copy for each scratch
+// memory.  If we don't use them they will get garbage collected during linking.
 const uint32_t __scratch_x("tmds_table_fullres_x") tmds_table_fullres_x[] = {
 #include "tmds_table_fullres.h"
 };
 
+const uint32_t __scratch_x("tmds_table_fullres_x") tmds_table_fullres_shifted_x[] = {
+#include "tmds_table_fullres_shifted.h"
+};
+
 const uint32_t __scratch_y("tmds_table_fullres_y") tmds_table_fullres_y[] = {
 #include "tmds_table_fullres.h"
+};
+
+const uint32_t __scratch_y("tmds_table_fullres_y") tmds_table_fullres_shifted_y[] = {
+#include "tmds_table_fullres_shifted.h"
 };
 
 // Configure an interpolator to extract a single colour channel from each of a pair
@@ -147,6 +153,7 @@ void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t 
 	// tread on each other's toes too much.
 	const uint32_t *lutbase = core ? tmds_table_fullres_x : tmds_table_fullres_y;
 	int lshift_lower = configure_interp_for_addrgen_fullres(interp0_hw, channel_msb, channel_lsb, 6, lutbase);
+	lutbase = core ? tmds_table_fullres_shifted_x : tmds_table_fullres_shifted_y;
 	int lshift_upper = configure_interp_for_addrgen_fullres(interp1_hw, channel_msb + 16, channel_lsb + 16, 6, lutbase);
 	assert(!lshift_upper); (void)lshift_upper;
 	if (lshift_lower) {

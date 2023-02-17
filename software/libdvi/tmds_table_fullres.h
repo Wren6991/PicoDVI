@@ -1,6 +1,6 @@
 // Each entry consists of a 10 bit TMDS symbol in pseudo-differential format
-// (10 LSBs) and the symbol's disparity as a 6 bit signed integer (the 6
-// MSBs). There is a 16 bit gap in between them, which is actually vital for
+// (10 LSBs) and the symbol's disparity as a 5 bit signed integer (the 5
+// MSBs). There is a 17 bit gap in between them, which is actually vital for
 // the way the TMDS encode works!
 //
 // There are 128 1-word entries. The lookup index should be the concatenation
