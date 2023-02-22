@@ -332,6 +332,14 @@ void inline __not_in_flash_func(DVItext1::_prepare_scanline)(uint16_t y) {
 
   // Blit font into 1bpp scanline buffer, then encode scanbuf into tmdsbuf
   for (uint16_t x = 0; x < WIDTH; x++) {
+    // Though this only handles 8-bit character output (e.g. ASCII), the
+    // character buffer uses 16-bit cells. The LOWER BYTE contains the 8-bit
+    // character value, while (for now) the UPPER BYTE is either 0 (display
+    // normally) or 255 (inverse). Eventually the upper byte might be
+    // switched to bitfields, e.g. bit 0 = inverse, bit 1 = blink, maybe an
+    // underscore cursor or something, etc. This is slightly wasteful, but
+    // greatly simplifies keeping character values and attributes always
+    // moving together (and the display buffer really isn't THAT big).
     uint8_t mask = row[x] >> 8;
     uint8_t c = (row[x] & 255) - FONT_FIRST_ASCII;
     scanbuf[x] = font_8x8[offset + c] ^ mask;
@@ -371,6 +379,7 @@ void __not_in_flash_func(DVItext1::_mainloop)(void) {
       for (uint8_t y1 = 0; y1 < 8; y1++) {
         uint32_t offset = y1 * FONT_N_CHARS;
         for (uint16_t x = 0; x < WIDTH; x++) {
+          // See notes above
           uint8_t mask = row[x] >> 8;
           uint8_t c = (row[x] & 255) - FONT_FIRST_ASCII;
           scanbuf[x] = font_8x8[offset + c] ^ mask;

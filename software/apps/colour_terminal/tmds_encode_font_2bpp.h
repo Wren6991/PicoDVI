@@ -3,6 +3,11 @@
 
 #include "pico/types.h"
 
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
 // Render characters using an 8px-wide font and a per-character 2bpp
 // foreground/background colour. This function is fast enough to run 3 times
 // per scanline on one core, so RGB222 coloured text can be rendered (with
@@ -19,5 +24,9 @@
 
 void tmds_encode_font_2bpp(const uint8_t *charbuf, const uint32_t	*colourbuf,
 	uint32_t *tmdsbuf, uint n_pix, const uint8_t *font_line);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif
