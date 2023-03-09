@@ -1,3 +1,13 @@
+// SPDX-FileCopyrightText: 2023 P Burgess for Adafruit Industries
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+/*!
+ * @file PicoDVI.cpp
+ *
+ * Arduino-and-Adafruit-GFX wrapper around Luke Wren's PicoDVI library.
+ */
+
 #include "PicoDVI.h"
 #include "libdvi/tmds_encode.h"
 
@@ -25,7 +35,10 @@ static struct {
 
 static PicoDVI *dviptr = NULL; // For C access to active C++ object
 
-// Runs on core 1 on startup
+/*!
+  @brief  Runs on core 1 on startup; this is how Philhower RP2040 handles
+          multiprocessing.
+*/
 void setup1(void) {
   while (dviptr == NULL) // Wait for PicoDVI::begin() to start on core 0
     yield();
@@ -284,10 +297,10 @@ void DVIGFX1::swap(bool copy_framebuffer) {
 
 // TEXT MODE IS A WORK IN PROGRESS
 
-#define FONT_CHAR_WIDTH 8
-#define FONT_CHAR_HEIGHT 8
-#define FONT_N_CHARS 256
-#define FONT_FIRST_ASCII 0
+#define FONT_CHAR_WIDTH 8  ///< Character block width, pixels
+#define FONT_CHAR_HEIGHT 8 ///< Character block height, pixels
+#define FONT_N_CHARS 256   ///< Number of symbols in font
+#define FONT_FIRST_ASCII 0 ///< Full CP437 is there, start at 0
 #include "font_8x8.h"
 
 DVItext1::DVItext1(const DVIresolution r, const struct dvi_serialiser_cfg &c,
