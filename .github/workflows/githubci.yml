@@ -22,9 +22,8 @@ jobs:
     - name: test platforms
       run: python3 ci/build_platform.py pico_rp2040
 
-    - name: clang
-      run:
-      #run: python3 ci/run-clang-format.py -e "ci/*" -e "bin/*" -r . 
+#    - name: clang
+#      run: python3 ci/run-clang-format.py -e "ci/*" -e "bin/*" -r . 
 
     - name: doxygen
       env:
