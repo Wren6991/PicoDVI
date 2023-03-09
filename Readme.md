@@ -19,8 +19,7 @@ RP2040 core).
 Changes vs main PicoDVI repo:
 - Add library.properties file, src and examples directories per Arduino
 requirements.
-- software/libdvi is soft-linked into src so Arduino IDE can compile these
-parts.
+- A full copy of software/libdvi is made in src (originally was soft-linked but Arduino Library Manager does not approve). If any updates are made in the original PicoDVI libdvi directory, copy them here!
 - The file dvi_serialiser.pio.h, normally not part of the distribution and
 generated during the Pico SDK build process, is provided here for Arduino
 build to work. If any changes are made in dvi_serialiser.pio (either here
