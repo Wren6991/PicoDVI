@@ -24,6 +24,7 @@ jobs:
 
     - name: clang
       #run: python3 ci/run-clang-format.py -e "ci/*" -e "bin/*" -r . 
+      run:
 
     - name: doxygen
       env:
