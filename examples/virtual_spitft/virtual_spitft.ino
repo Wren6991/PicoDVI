@@ -8,11 +8,11 @@
 
 // GPIO connected to (or shared with) TFT control.
 // Careful not to overlap the DVI pins.
-#define PIN_DATA 18 // 3 contiguous pins start here: data, DC, clk
-#define PIN_CS   21 // Chip-select need not be contiguous
+#define PIN_DATA 9 // 3 contiguous pins start here: data, DC, clk
+#define PIN_CS   6 // Chip-select need not be contiguous
 
 // 320x240 16-bit color display (to match common TFT display resolution):
-DVIGFX16 display(DVI_RES_320x240p60, pimoroni_demo_hdmi_cfg);
+DVIGFX16 display(DVI_RES_320x240p60, adafruit_feather_dvi_cfg);
 
 // Output of pioasm ----
 
