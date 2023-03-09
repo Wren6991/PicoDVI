@@ -92,4 +92,13 @@ static const struct dvi_serialiser_cfg not_hdmi_featherwing_cfg = {
 	.invert_diffpairs = true
 };
 
+// Adafruit Feather RP2040 DVI
+static const struct dvi_serialiser_cfg adafruit_feather_dvi_cfg = {
+	.pio = DVI_DEFAULT_PIO_INST,
+	.sm_tmds = {0, 1, 2},
+	.pins_tmds = {18, 20, 22},
+	.pins_clk = 16,
+	.invert_diffpairs = true
+};
+
 #endif
