@@ -60,7 +60,7 @@
 
 // By default we go R, G, B from MSB -> LSB. Override to e.g. swap RGB <-> BGR
 
-// Default 8bpp layout: RGB332, {r[1:0], g[2:0], b[1:0]}
+// Default 8bpp layout: RGB332, {r[2:0], g[2:0], b[1:0]}
 
 #ifndef DVI_8BPP_RED_MSB
 #define DVI_8BPP_RED_MSB 7

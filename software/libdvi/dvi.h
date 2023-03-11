@@ -45,8 +45,13 @@ struct dvi_inst {
 	// Either scanline buffers or frame buffers:
 	queue_t q_colour_valid;
 	queue_t q_colour_free;
-
+    bool    started;
 };
+
+// Reports DVI status 1: active 0: inactive
+inline bool dvi_is_started(struct dvi_inst *inst) {
+    return inst->started;
+}
 
 // Set up data structures and hardware for DVI.
 void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_colour_queue);
@@ -55,9 +60,15 @@ void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_col
 // whichever core called this function. Registers an exclusive IRQ handler.
 void dvi_register_irqs_this_core(struct dvi_inst *inst, uint irq_num);
 
+// Unregisters DVI irq callbacks for this core
+void dvi_unregister_irqs_this_core(struct dvi_inst *inst, uint irq_num);
+
 // Start actually wiggling TMDS pairs. Call this once you have initialised the
 // DVI, have registered the IRQs, and are producing rendered scanlines.
 void dvi_start(struct dvi_inst *inst);
+
+//Stops DVI pairs generations
+void dvi_stop(struct dvi_inst *inst);
 
 // TMDS encode worker function: core enters and doesn't leave, but still
 // responds to IRQs. Repeatedly pop a scanline buffer from q_colour_valid,
