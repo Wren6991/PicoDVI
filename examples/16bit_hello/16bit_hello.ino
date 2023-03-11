@@ -16,7 +16,7 @@ DVIGFX16 display(DVI_RES_320x240p60, adafruit_feather_dvi_cfg);
 // 320x240 mode. SOME BOARDS MIGHT SIMPLY NOT BE COMPATIBLE WITH THIS.
 // May require selecting QSPI div4 clock (Tools menu) to slow down flash
 // accesses, may require further over-volting the CPU to 1.25 or 1.3 V.
-//DVIGFX16 display(DVI_RES_320x240p60, adafruit_feather_dvi_cfg);
+//DVIGFX16 display(DVI_RES_400x240p60, adafruit_feather_dvi_cfg);
 
 void setup() { // Runs once on startup
   if (!display.begin()) { // Blink LED if insufficient RAM
