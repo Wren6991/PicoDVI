@@ -30,6 +30,13 @@ enum dvi_line_state {
 	DVI_STATE_COUNT
 };
 
+typedef struct dvi_blank {
+    int left;
+    int right;
+    int top;
+    int bottom;
+} dvi_blank_t;
+
 struct dvi_timing_state {
 	uint v_ctr;
 	enum dvi_line_state v_state;
@@ -96,4 +103,7 @@ void dvi_setup_scanline_for_active(const struct dvi_timing *t, const struct dvi_
 
 void dvi_update_scanline_data_dma(const struct dvi_timing *t, const uint32_t *tmdsbuf, struct dvi_scanline_dma_list *l);
 
+inline uint32_t dvi_timing_get_pixel_clock(const struct dvi_timing *t) { return t->bit_clk_khz * 100; }
+uint32_t dvi_timing_get_pixels_per_frame(const struct dvi_timing *t);
+uint32_t dvi_timing_get_pixels_per_line(const struct dvi_timing *t);
 #endif

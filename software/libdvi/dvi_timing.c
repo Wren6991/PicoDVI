@@ -324,3 +324,12 @@ void __dvi_func(dvi_update_scanline_data_dma)(const struct dvi_timing *t, const 
 	}
 }
 
+uint32_t dvi_timing_get_pixels_per_frame(const struct dvi_timing *t) {
+    uint32_t w = dvi_timing_get_pixels_per_line(t);
+    uint32_t h = t->v_front_porch + t->v_sync_width + t->v_back_porch + t->v_active_lines;
+    return w * h;
+}
+
+uint32_t dvi_timing_get_pixels_per_line(const struct dvi_timing *t) {
+    return t->h_front_porch + t->h_sync_width + t->h_back_porch + t->h_active_pixels;
+}
