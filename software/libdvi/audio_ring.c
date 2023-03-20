@@ -16,8 +16,7 @@ uint32_t get_write_size(audio_ring_t *audio_ring, bool full) {
     if (wp < rp) {
         return rp - wp - 1;
     } else {
-        uint32_t size = audio_ring->size - wp;
-        return full ? ( size - wp + rp - 1) : (size - wp - (rp == 0 ? 1 : 0));
+        return audio_ring->size - wp + (full ? rp - 1 : (rp == 0 ? -1 : 0));
     }   
 }
 

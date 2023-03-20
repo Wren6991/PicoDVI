@@ -42,9 +42,9 @@ void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_col
 
     dvi_setup_scanline_for_vblank(inst->timing, inst->dma_cfg, true, &inst->dma_list_vblank_sync);
     dvi_setup_scanline_for_vblank(inst->timing, inst->dma_cfg, false, &inst->dma_list_vblank_nosync);
-    dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, (void*)SRAM_BASE, &inst->dma_list_active);
-    dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_error);
-    dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_active_blank);
+    dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, (void*)SRAM_BASE, &inst->dma_list_active, false);
+    dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_error, false);
+    dvi_setup_scanline_for_active(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_active_blank, true);
 
     for (int i = 0; i < DVI_N_TMDS_BUFFERS; ++i) {
 #if DVI_MONOCHROME_TMDS
@@ -243,47 +243,72 @@ static void __dvi_func(dvi_dma_irq_handler)(struct dvi_inst *inst) {
 
     switch (inst->timing_state.v_state) {
         case DVI_STATE_ACTIVE:
-            if (inst->timing_state.v_ctr < inst->blank_settings.top || inst->timing_state.v_ctr >= (inst->timing->v_active_lines - inst->blank_settings.bottom)) {
+        {
+            bool is_blank_line = false;
+            if (inst->timing_state.v_ctr < inst->blank_settings.top ||
+                inst->timing_state.v_ctr >= (inst->timing->v_active_lines - inst->blank_settings.bottom))
+            {
                 // Is a Blank Line
-               _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_active_blank);
-            } else {
-                if (queue_try_peek_u32(&inst->q_tmds_valid, &tmdsbuf)) {
-                    if (inst->timing_state.v_ctr % DVI_VERTICAL_REPEAT == DVI_VERTICAL_REPEAT - 1) {
+                is_blank_line = true;
+            }
+            else
+            {
+                if (queue_try_peek_u32(&inst->q_tmds_valid, &tmdsbuf))
+                {
+                    if (inst->timing_state.v_ctr % DVI_VERTICAL_REPEAT == DVI_VERTICAL_REPEAT - 1)
+                    {
                         queue_remove_blocking_u32(&inst->q_tmds_valid, &tmdsbuf);
                         inst->tmds_buf_release[0] = tmdsbuf;
                     }
-                } else {
+                }
+                else
+                {
                     // No valid scanline was ready (generates solid red scanline)
                     tmdsbuf = NULL;
-                    if (inst->timing_state.v_ctr % DVI_VERTICAL_REPEAT == DVI_VERTICAL_REPEAT - 1) {
+                    if (inst->timing_state.v_ctr % DVI_VERTICAL_REPEAT == DVI_VERTICAL_REPEAT - 1)
+                    {
                         ++inst->late_scanline_ctr;
                     }
                 }
+
+                if (inst->scanline_is_enabled && (inst->timing_state.v_ctr & 1))
+                {
+                    is_blank_line = true;
+                }
             }
-            if (tmdsbuf) {
-                dvi_update_scanline_data_dma(inst->timing, tmdsbuf, &inst->dma_list_active);
-                _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_active);
-            } else {
-                _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_error);
-            }
-            if (inst->scanline_callback && inst->timing_state.v_ctr % DVI_VERTICAL_REPEAT == DVI_VERTICAL_REPEAT - 1) {
-                inst->scanline_callback(inst->timing_state.v_ctr/DVI_VERTICAL_REPEAT);
-            }
-            if (inst->scanline_is_enabled && (inst->timing_state.v_ctr & 1)) {
+
+            if (is_blank_line)
+            {
                 _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_active_blank);
             }
-            break;
+            else if (tmdsbuf)
+            {
+                dvi_update_scanline_data_dma(inst->timing, tmdsbuf, &inst->dma_list_active, inst->data_island_is_enabled);
+                _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_active);
+            }
+            else
+            {
+                _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_error);
+            }
+            if (inst->scanline_callback && inst->timing_state.v_ctr % DVI_VERTICAL_REPEAT == DVI_VERTICAL_REPEAT - 1)
+            {
+                inst->scanline_callback(inst->timing_state.v_ctr / DVI_VERTICAL_REPEAT);
+            }
+        }
+        break;
+
         case DVI_STATE_SYNC:
             _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_vblank_sync);
             if (inst->timing_state.v_ctr == 0) {
                 ++inst->dvi_frame_count;
             }
             break;
+
         default:
             _dvi_load_dma_op(inst->dma_cfg, &inst->dma_list_vblank_nosync);
             break;
     }
-    
+
     if (inst->data_island_is_enabled) {
         dvi_update_data_packet(inst);
     }
@@ -315,6 +340,12 @@ void dvi_audio_init(struct dvi_inst *inst) {
 
 void dvi_enable_data_island(struct dvi_inst *inst) {
     inst->data_island_is_enabled  = true;
+
+    dvi_setup_scanline_for_vblank_with_audio(inst->timing, inst->dma_cfg, true, &inst->dma_list_vblank_sync);
+    dvi_setup_scanline_for_vblank_with_audio(inst->timing, inst->dma_cfg, false, &inst->dma_list_vblank_nosync);
+    dvi_setup_scanline_for_active_with_audio(inst->timing, inst->dma_cfg, (void*)SRAM_BASE, &inst->dma_list_active, false);
+    dvi_setup_scanline_for_active_with_audio(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_error, false);
+    dvi_setup_scanline_for_active_with_audio(inst->timing, inst->dma_cfg, NULL, &inst->dma_list_active_blank, true);
 
     // Setup internal Data Packet streams
     dvi_update_data_island_ptr(&inst->dma_list_vblank_sync,   &inst->next_data_stream);
