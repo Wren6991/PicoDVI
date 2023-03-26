@@ -1,5 +1,10 @@
-Bitbanged DVI on the RP2040 Microcontroller
-===========================================
+Bitbanged DVI on the RP2040 Microcontroller with HDMI and audio support
+==================================================================================
+Big Kudos to @shuichitakano to fix the audio support
+
+Using https://github.com/shuichitakano/pico_lib C++ implementation of the HDMI with audio support
+For picoDVI from https://github.com/Wren6991/PicoDVI
+DVI start/stop works, audio works with some limitations of cpu usage, if line or pixel doubling is enabled works
 
 ![](img/mountains.jpg)
 
