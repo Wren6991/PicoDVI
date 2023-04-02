@@ -101,4 +101,12 @@ static const struct dvi_serialiser_cfg adafruit_feather_dvi_cfg = {
 	.invert_diffpairs = true
 };
 
+static const struct dvi_serialiser_cfg adafruit_dvibell_cfg = {
+  .pio = DVI_DEFAULT_PIO_INST,
+  .sm_tmds = {0, 1, 2},
+  .pins_tmds = {10, 8, 6},
+  .pins_clk = 12,
+  .invert_diffpairs = false
+};
+
 #endif
