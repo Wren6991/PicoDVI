@@ -108,12 +108,12 @@ void face(uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t co
       float t2z = rotated[p3][2] * s1 + rotated[p4][2] * s2;
       // Project interpolated endpoints to image plane @ Z=0
       float dz = t1z - CAM_Z; // Camera to point
-      int   x1 = display.width()  / 2 + int(t1x / dz * scale);
-      int   y1 = display.height() / 2 + int(t1y / dz * scale);
+      float x1 = (float)(display.width()  / 2) + t1x / dz * scale + 0.5;
+      float y1 = (float)(display.height() / 2) + t1y / dz * scale + 0.5;
       dz = t2z - CAM_Z;       // Camera to point
-      int   x2 = display.width()  / 2 + int(t2x / dz * scale);
-      int   y2 = display.height() / 2 + int(t2y / dz * scale);
-      display.drawLine(x1, y1, x2, y2, color);
+      float x2 = (float)(display.width()  / 2) + t2x / dz * scale + 0.5;
+      float y2 = (float)(display.height() / 2) + t2y / dz * scale + 0.5;
+      line(x1, y1, x2, y2, color);
     }
   }
 }
@@ -194,6 +194,7 @@ void loop() { // Runs once every frame
   // Overlay big sprite. Although DVIGFX8 is a COLOR display type,
   // we leverage GFX's drawGrayscaleBitmap() function to draw it...
   // saves us writing a ton of code this way.
+  // Comment this out if you want ONLY the background cube.
   display.drawGrayscaleBitmap((display.width() - SPRITE_WIDTH) / 2,
     display.height() - SPRITE_HEIGHT, spritedata[spritenum].sprite,
     spritedata[spritenum].mask, SPRITE_WIDTH, SPRITE_HEIGHT);
@@ -202,4 +203,141 @@ void loop() { // Runs once every frame
   // to next frame, we'll draw it new from scratch each time.
   display.swap();
   frame++; // For animation timing; wraps around 0-255
+}
+
+// A somewhat smooth(er) line drawing function. Not antialiased, but with
+// subpixel positioning that makes the background animation less "jumpy"
+// than with GFX, which is all integer end points.
+
+// Returns bitmask of which edge(s) a point exceeds
+uint8_t xymask(float x, float y) {
+  return ( (x < 0.0      ) | ((x >= (float)display.width() ) << 1) |
+          ((y < 0.0) << 2) | ((y >= (float)display.height()) << 3));
+}
+
+// Returns bitmask of which X edge(s) a point exceeds
+uint8_t xmask(float x) {
+  return (x < 0.0) | ((x >= (float)display.width()) << 1);
+}
+
+void line(float x1, float y1, float x2, float y2, uint8_t color) {
+float ox1 = x1, oy1 = y1, ox2 = x2, oy2 = y2;
+  uint8_t mask1 = xymask(x1, y1); // If both endpoints are
+  uint8_t mask2 = xymask(x2, y2); // off same edge(s),
+  if (mask1 & mask2) return;      // line won't overlap screen
+
+  float dx = x2 - x1;
+  float dy = y2 - y1;
+
+  // Clip top
+  if (mask1 & 4) {
+    x1 -= y1 * dx / dy;
+    y1  = 0.0;
+  } else if (mask2 & 4) {
+    x2 -= y2 * dx / dy;
+    y2  = 0.0;
+  }
+
+  float maxy = (float)(display.height() - 1);
+
+  // Clip bottom
+  if (mask1 & 8) {
+    x1 -= (y1 - maxy) * dx / dy;
+    y1  = maxy;
+  } else if (mask2 & 8) {
+    x2 -= (y2 - maxy) * dx / dy;
+    y2  = maxy;
+  }
+
+  mask1 = xmask(x1); // Repeat the offscreen check after Y clip
+  mask2 = xmask(x2);
+  if (mask1 & mask2) return;
+
+  dx = x2 - x1;
+  dy = y2 - y1;
+
+  // Clip left
+  if (mask1 & 1) {
+    y1 -= x1 * dy / dx;
+    x1  = 0.0;
+  } else if (mask2 & 1) {
+    y2 -= x2 * dy / dx;
+    x2  = 0.0;
+  }
+
+  float maxx = (float)(display.width() - 1);
+
+  // Clip right
+  if (mask1 & 2) {
+    y1 -= (x1 - maxx) * dy / dx;
+    x1  = maxx;
+  } else if (mask2 & 2) {
+    y2 -= (x2 - maxx) * dy / dx;
+    x2  = maxx;
+  }
+
+  // (x1, y1) to (x2, y2) is known to be on-screen and in-bounds now.
+
+  // Handle a couple special cases (horizontal, vertical lines) first,
+  // GFX takes care of these fine and it avoids some divide-by-zero
+  // checks in the diagonal code later.
+  if ((int)y1 == (int)y2) { // Horizontal or single point
+    int16_t x, w;
+    if (x2 >= x1) {
+      x = (int)x1;
+      w = (int)x2 - (int)x1 + 1;
+    } else {
+      x = (int)x2;
+      w = (int)x1 - (int)x2 + 1;
+    }
+    display.drawFastHLine(x, (int)y1, w, color);
+  } else if ((int)x1 == (int)x2) { // Vertical
+    int16_t y, h;
+    if (y2 >= y1) {
+      y = (int)y1;
+      h = (int)y2 - (int)y1 + 1;
+    } else {
+      y = (int)y2;
+      h = (int)y1 - (int)y2 + 1;
+    }
+    display.drawFastVLine((int)x1, y, h, color);
+  } else { // Diagonal
+    dx = x2 - x1;
+    dy = y2 - y1;
+
+    uint8_t *ptr = display.getBuffer();
+
+    // This is a bit ugly in that it uses floating-point math in the line
+    // drawing loop. There are more optimal Bresenham-esque fixed-point
+    // approaches to do this (initializing the error term based on subpixel
+    // endpoints and slopes), but A) I'm out of spoons today, and B) we're
+    // drawing just a few dozen lines and it's simply not a bottleneck in
+    // this demo. Just saying this won't scale up to thousands of lines.
+
+    if (fabs(dx) >= fabs(dy)) { // "Wide" line
+      if (x1 > x2) {            // Put (x1, y1) at left
+        float t = x1; x1 = x2; x2 = t;
+        t = y1; y1 = y2; y2 = t;
+      }
+      uint16_t ix1   = (uint16_t)x1;
+      uint16_t ix2   = (uint16_t)x2;
+      float    slope = dy / dx;
+      for (uint16_t x=ix1; x <= ix2; x++) {
+        uint16_t iy = (uint16_t)(y1 + slope * (float)(x - ix1));
+        if (iy < display.height()) ptr[iy * display.width() + x] = color;
+      }
+    } else {         // "Tall" line
+      if (y1 > y2) { // Put (x1, y1) at top
+        float t = x1; x1 = x2; x2 = t;
+        t = y1; y1 = y2; y2 = t;
+      }
+      uint16_t iy1   = (uint16_t)y1;
+      uint16_t iy2   = (uint16_t)y2;
+      float    slope = dx / dy;
+      for (uint16_t y=iy1; y <= iy2; y++) {
+        uint16_t ix = (uint16_t)(x1 + slope * (float)(y - iy1));
+        if (ix < display.width()) ptr[y * display.width() + ix] = color;
+      }
+    }
+  }
 }
