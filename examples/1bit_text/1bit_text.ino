@@ -18,6 +18,10 @@ DVItext1 display(DVI_RES_640x240p60, adafruit_feather_dvi_cfg);
 // Here's how a 100x60 char display might be declared:
 //DVItext1 display(DVI_RES_800x480p60, adafruit_feather_dvi_cfg);
 
+// A reduced refresh rate display doesn't as aggressive an over-clock
+// This timing is verified to work on https://www.adafruit.com/product/2232
+//DVItext1 display(DVI_RES_800x240p30, adafruit_feather_dvi_cfg);
+
 void setup() { // Runs once on startup
   if (!display.begin()) { // Blink LED if insufficient RAM
     pinMode(LED_BUILTIN, OUTPUT);

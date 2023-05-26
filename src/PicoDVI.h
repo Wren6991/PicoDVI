@@ -21,10 +21,13 @@
 enum DVIresolution {
   DVI_RES_320x240p60 = 0,
   DVI_RES_400x240p60,
+  DVI_RES_400x240p30, // Reduced refresh rate, less overclock required
   DVI_RES_640x480p60,
   DVI_RES_800x480p60,
+  DVI_RES_800x480p30, // Reduced refresh rate, less overclock required
   DVI_RES_640x240p60, // "Tall" pixels, e.g. for 80-column text mode
   DVI_RES_800x240p60, // Same, 100-column
+  DVI_RES_800x240p30, // Reduced refresh rate, less overclock required
   DVI_RES_1280x720p30 // Experimenting, not working, plz don't use
 };
 
