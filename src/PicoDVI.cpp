@@ -23,10 +23,13 @@ static struct {
 } dvispec[] = {
     {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 320, 240, 2},
     {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 400, 240, 2},
+    {dvi_timing_800x480p_30hz, VREG_VOLTAGE_1_20, 400, 240, 2},
     {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 640, 480, 1},
     {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 800, 480, 1},
+    {dvi_timing_800x480p_30hz, VREG_VOLTAGE_1_20, 800, 480, 1},
     {dvi_timing_640x480p_60hz, VREG_VOLTAGE_1_20, 640, 240, 2},
     {dvi_timing_800x480p_60hz, VREG_VOLTAGE_1_20, 800, 240, 2},
+    {dvi_timing_800x480p_30hz, VREG_VOLTAGE_1_20, 800, 240, 2},
     // Additional resolutions might get added here if the overclock issue can
     // be sorted out. Regardless, always keep this list 1:1 in sync with the
     // DVIresolution enum in PicoDVI.h.

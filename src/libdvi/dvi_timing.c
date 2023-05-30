@@ -65,6 +65,26 @@ const struct dvi_timing __dvi_const(dvi_timing_800x480p_60hz) = {
 	.bit_clk_khz     = 295200
 };
 
+// 800x480p 30 Hz, 148 MHz bit clock. This is not a CEA mode either , but needs
+// lower overclock compared to dvi_timing_800x480p_60hz and the timing is
+// verified to work on https://www.adafruit.com/product/2232
+const struct dvi_timing __dvi_const(dvi_timing_800x480p_30hz) = {
+        .h_sync_polarity = false,
+        .h_front_porch   = 24,
+        .h_sync_width    = 72,
+        .h_back_porch    = 96,
+        .h_active_pixels = 800,
+
+        .v_sync_polarity = true,
+        .v_front_porch   = 3,
+        .v_sync_width    = 10,
+        .v_back_porch    = 4,
+        .v_active_lines  = 480,
+
+        .bit_clk_khz     = 147600
+};
+
+
 // SVGA reduced blanking (355 MHz bit clock) -- valid CVT mode, less common
 // than fully-blanked SVGA, but doesn't require such a high system clock
 const struct dvi_timing __dvi_const(dvi_timing_800x600p_reduced_60hz) = {
