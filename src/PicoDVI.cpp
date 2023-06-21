@@ -270,6 +270,7 @@ DVIGFX1::~DVIGFX1(void) {
 }
 
 static void mainloop1(struct dvi_inst *inst) {
+  (void)inst; // Avoid compiler warning
   ((DVIGFX1 *)gfxptr)->_mainloop();
 }
 
@@ -406,6 +407,7 @@ static void mainlooptext1(struct dvi_inst *inst) {
 // since nothing important to do in idle func above.
 
 static void __not_in_flash_func(mainlooptext1)(struct dvi_inst *inst) {
+  (void)inst; // Avoid compiler warning
   ((DVItext1 *)gfxptr)->_mainloop();
 }
 
