@@ -54,6 +54,27 @@ void PicoDVI::_setup(void) {
     ; // Wait for DVIGFX*::begin() to set this
   dvi_register_irqs_this_core(&dvi0, DMA_IRQ_0);
   dvi_start(&dvi0);
+
+  // This is disabled for now, for a transitional period while folks
+  // might be mixing in older versions of arduino-pico, Adafruit_CPFS
+  // and/or Adafruit_SPIFlash. Once is seems pretty solid that everyone's
+  // using current versions that correctly locate PicoDVI functions in
+  // RAM, this can be activated. Not urgent but a nice-to-have.
+#if 0
+  // Borrowed from CircuitPython: turn off core 1 flash access. Any attempt
+  // after this will hard fault (not good, but preferable to the alternative
+  // which would corrupt the CIRCUITPY flash filesystem if mounted). Linker
+  // file MUST place the following files in RAM or library won't work:
+  // *interp.c.obj *divider.S.obj *PicoDVI.cpp.o *dvi.c.o
+  // (Earle Philhower arduino-pico >= 3.3.0 does this now.)
+  MPU->CTRL = MPU_CTRL_PRIVDEFENA_Msk | MPU_CTRL_ENABLE_Msk;
+  MPU->RNR  = 6;
+  MPU->RBAR = XIP_MAIN_BASE | MPU_RBAR_VALID_Msk;
+  MPU->RASR = MPU_RASR_XN_Msk | MPU_RASR_ENABLE_Msk |
+              (0x1b << MPU_RASR_SIZE_Pos);
+  MPU->RNR  = 7;
+#endif
+
   (*mainloop)(&dvi0);
 }
 
@@ -384,7 +405,7 @@ static void mainlooptext1(struct dvi_inst *inst) {
 // This is a little simpler and might stick with it
 // since nothing important to do in idle func above.
 
-static void mainlooptext1(struct dvi_inst *inst) {
+static void __not_in_flash_func(mainlooptext1)(struct dvi_inst *inst) {
   ((DVItext1 *)gfxptr)->_mainloop();
 }
 
