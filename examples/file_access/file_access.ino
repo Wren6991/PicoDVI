@@ -15,13 +15,15 @@ the Earle Philhower arduino-pico core installed. Failure to have all the
 right pieces will wipe out any data stored on the drive!
 
 arduino-pico (via Arduino board manager)  3.3.0 or later
-Adafruit_CPFS (via Library manager)       1.0.1 or later
+Adafruit_CPFS (via Library manager)       1.1.0 or later
 Adafruit_SPIFlash (")                     4.2.0 or later
 
-That said, it's still a smart idea to keep a backup of any data you install
+It is wise and STRONGLY RECOMMENDED to keep a backup of any data you install
 on the board. These libraries combined are asking a LOT of the RP2040 chip,
-it's always possible there may be some hiccup and you'll have ot start over
-with the CircuitPython install and drive setup.
+and despite best efforts there's still the occasional hiccup that can wipe
+the filesystem, making you start over with the CircuitPython install and
+drive setup. See notes below about perhaps adding a boot switch to USB-mount
+CIRCUITPY only when needed; it's more stable if left unmounted.
 */
 
 #include <PicoDVI.h>       // For DVI video out
@@ -39,7 +41,16 @@ void setup() { // Runs once on startup
   // Start the CIRCUITPY flash filesystem. SUPER IMPORTANT: NOTICE THE
   // EXTRA PARAMETERS HERE. This is REQUIRED when using PicoDVI and
   // Adafruit_CPFS together.
-  fs = Adafruit_CPFS::begin(-1, NULL, false);
+  fs = Adafruit_CPFS::begin(true, -1, NULL, false);
+  // The initial 'true' argument tells CPFS to make the flash filesystem
+  // available to a USB-connected host computer. Passing 'false' makes it
+  // only available to the Arduino sketch. Given the tenuous stability of
+  // handling so much at once (DVI, flash, USB), one might want to add a
+  // boot-time button or switch to select whether CIRCUITPY is mounted on
+  // host, or is just using USB for power.
+  // Next two arguments are ignored on RP2040; they're specifically for
+  // some 'Haxpress' dev boards with the CPFS library. Last argument should
+  // ALWAYS be set 'false' on RP2040, or there will be...trouble.
 
   if (!display.begin()) { // Start DVI, slow blink LED if insufficient RAM
     for (;;) digitalWrite(LED_BUILTIN, (millis() / 500) & 1);
