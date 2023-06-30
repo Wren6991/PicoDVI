@@ -217,7 +217,7 @@ static uint32_t __attribute__((aligned(8))) __dvi_const(empty_scanline_tmds)[6] 
 void dvi_timing_state_init(struct dvi_timing_state *t) {
 	t->v_ctr = 0;
 	t->v_state = DVI_STATE_FRONT_PORCH;
-};
+}
 
 void __dvi_func(dvi_timing_state_advance)(const struct dvi_timing *t, struct dvi_timing_state *s) {
 		s->v_ctr++;
@@ -252,7 +252,7 @@ static void _set_data_cb(dma_cb_t *cb, const struct dvi_lane_dma_cfg *dma_cfg,
 	channel_config_set_chain_to(&cb->c, dma_cfg->chan_ctrl);
 	// Note we never send a null trigger, so IRQ_QUIET is an IRQ suppression flag
 	channel_config_set_irq_quiet(&cb->c, !irq_on_finish);
-};
+}
 
 void dvi_setup_scanline_for_vblank(const struct dvi_timing *t, const struct dvi_lane_dma_cfg dma_cfg[],
 		bool vsync_asserted, struct dvi_scanline_dma_list *l) {
