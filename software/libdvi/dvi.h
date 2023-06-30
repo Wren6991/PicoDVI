@@ -1,6 +1,10 @@
 #ifndef _DVI_H
 #define _DVI_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define N_TMDS_LANES 3
 #define TMDS_SYNC_LANE 0 // blue!
 
@@ -68,5 +72,9 @@ void dvi_scanbuf_main_16bpp(struct dvi_inst *inst);
 // Same as above, but each q_colour_valid entry is a framebuffer
 void dvi_framebuf_main_8bpp(struct dvi_inst *inst);
 void dvi_framebuf_main_16bpp(struct dvi_inst *inst);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
