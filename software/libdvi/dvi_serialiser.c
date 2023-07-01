@@ -63,6 +63,8 @@ void dvi_serialiser_enable(struct dvi_serialiser_cfg *cfg, bool enable) {
 	for (int i = 0; i < N_TMDS_LANES; ++i)
 		mask |= 1u << (cfg->sm_tmds[i] + PIO_CTRL_SM_ENABLE_LSB);
 	if (enable) {
+		// The DVI spec allows for phase offset between clock and data links.
+		// So PWM and PIO do not need to be synchronised perfectly.
 		hw_set_bits(&cfg->pio->ctrl, mask);
 		pwm_set_enabled(pwm_gpio_to_slice_num(cfg->pins_clk), true);
 	}

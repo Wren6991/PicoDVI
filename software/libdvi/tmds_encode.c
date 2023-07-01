@@ -191,7 +191,7 @@ static void tmds_encode_symbols(uint8_t pixel, uint32_t* negative_balance_sym, u
 	}
 
 	int imbalance = byte_imbalance(sym & 0xFF);
-  if (imbalance == 0) {
+	if (imbalance == 0) {
 		if ((sym & 0x100) == 0) sym ^= 0x2ff;
 		*positive_balance_sym = sym;
 		*negative_balance_sym = sym;
