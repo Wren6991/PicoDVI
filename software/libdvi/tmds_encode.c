@@ -19,6 +19,10 @@ const uint32_t __scratch_y("tmds_table_fullres_y") tmds_table_fullres_y[] = {
 #include "tmds_table_fullres.h"
 };
 
+const uint32_t __scratch_x("tmds_table_4bpp") tmds_table_4bpp[] = {
+#include "tmds_table_4bpp.h"
+};
+
 // Configure an interpolator to extract a single colour channel from each of a pair
 // of pixels, with the first pixel's lsb at pixel_lsb, and the pixels being
 // pixel_width wide. Produce a LUT address for the first pixel's colour data on
@@ -92,6 +96,24 @@ void __not_in_flash_func(tmds_encode_data_channel_8bpp)(const uint32_t *pixbuf, 
 		tmds_encode_loop_8bpp(pixbuf, symbuf, n_pix);
 	interp_restore(interp0_hw, &interp0_save);
 	interp_restore(interp1_hw, &interp1_save);
+}
+
+void __not_in_flash_func(tmds_encode_4bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix) {
+	interp_hw_save_t interp0_save;
+	interp_save(interp0_hw, &interp0_save);
+	interp_config c;
+	c = interp_default_config();
+	interp_config_set_shift(&c, 14);
+	interp_config_set_mask(&c, 2, 9);
+	interp_set_config(interp0_hw, 0, &c);
+	interp_config_set_shift(&c, 22);
+	interp_config_set_cross_input(&c, true);
+	interp_set_config(interp0_hw, 1, &c);
+	interp0_hw->base[0] = (uint32_t)tmds_table_4bpp;
+	interp0_hw->base[1] = (uint32_t)tmds_table_4bpp;
+
+	tmds_encode_loop_4bpp(pixbuf, symbuf, n_pix);
+	interp_restore(interp0_hw, &interp0_save);
 }
 
 // ----------------------------------------------------------------------------

@@ -621,3 +621,32 @@ decl_func_x tmds_palette_encode_loop_x
 	tmds_palette_encode_loop
 decl_func_y tmds_palette_encode_loop_y
 	tmds_palette_encode_loop
+
+// 4-bit grayscale
+
+decl_func tmds_encode_loop_4bpp
+	push {r4, r5, r6, r7, lr}
+	lsls r2, #1
+	add r2, r1
+	mov ip, r2
+	ldr r2, =(SIO_BASE + SIO_INTERP0_ACCUM0_OFFSET)
+	b 2f
+.align 2
+1:
+	ldmia r0!, {r4}
+	str r4, [r2, #ACCUM0_OFFS]
+	ldr r6, [r2, #PEEK0_OFFS]
+	ldr r6, [r6]
+	ldr r7, [r2, #PEEK1_OFFS]
+	ldr r7, [r7]
+	lsls r4, #16
+	str r4, [r2, #ACCUM0_OFFS]
+	ldr r4, [r2, #PEEK0_OFFS]
+	ldr r4, [r4]
+	ldr r5, [r2, #PEEK1_OFFS]
+	ldr r5, [r5]
+	stmia r1!, {r4, r5, r6, r7}
+2:
+	cmp r1, ip
+	bne 1b
+	pop {r4, r5, r6, r7, pc}

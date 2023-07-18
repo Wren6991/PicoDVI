@@ -7,6 +7,7 @@
 // Functions from tmds_encode.c
 void tmds_encode_data_channel_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
 void tmds_encode_data_channel_8bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
+void tmds_encode_4bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 void tmds_encode_data_channel_fullres_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
 void tmds_setup_palette_symbols(const uint16_t *palette, uint32_t *symbuf, size_t n_palette);
 void tmds_setup_palette24_symbols(const uint32_t *palette, uint32_t *symbuf, size_t n_palette);
@@ -16,6 +17,7 @@ void tmds_encode_palette_data(const uint32_t *pixbuf, const uint32_t *tmds_palet
 
 void tmds_encode_1bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 void tmds_encode_2bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_loop_4bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 
 // Uses interp0:
 void tmds_encode_loop_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
@@ -33,5 +35,7 @@ void tmds_fullres_encode_loop_16bpp_leftshift_x(const uint32_t *pixbuf, uint32_t
 void tmds_fullres_encode_loop_16bpp_leftshift_y(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint leftshift);
 void tmds_palette_encode_loop_x(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 void tmds_palette_encode_loop_y(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+
+extern const uint32_t tmds_table_4bpp[];
 
 #endif
