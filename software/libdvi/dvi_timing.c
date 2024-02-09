@@ -28,6 +28,24 @@ const struct dvi_timing __dvi_const(dvi_timing_640x480p_60hz) = {
 	.bit_clk_khz       = 252000
 };
 
+// 720x480p 60 Hz -- Required by CEA for EDTV/HDTV displays. Convenient for
+// emulating NTSC machines with visible overscan and reasonable clk_sys (270 MHz).
+const struct dvi_timing __dvi_const(dvi_timing_720x480p_60hz) = {
+	.h_sync_polarity   = false,
+	.h_front_porch     = 16,
+	.h_sync_width      = 62,
+	.h_back_porch      = 60,
+	.h_active_pixels   = 720,
+
+	.v_sync_polarity   = false,
+	.v_front_porch     = 9,
+	.v_sync_width      = 6,
+	.v_back_porch      = 30,
+	.v_active_lines    = 480,
+
+	.bit_clk_khz       = 270000
+};
+
 // SVGA -- completely by-the-book but requires 400 MHz clk_sys
 const struct dvi_timing __dvi_const(dvi_timing_800x600p_60hz) = {
 	.h_sync_polarity   = false,
