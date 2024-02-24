@@ -1,0 +1,15 @@
+name: CI
+on: [push]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi
+      - run: git clone https://github.com/raspberrypi/pico-sdk
+      - run: cmake software -DPICO_SDK_PATH=$PWD/pico-sdk
+      - run: make
