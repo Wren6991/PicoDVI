@@ -40,9 +40,9 @@ struct semaphore dvi_start_sem;
 
 static inline void prepare_scanline(const uint32_t *colourbuf, uint32_t *tmdsbuf) {
 	const uint pixwidth = 640;
-	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 0 * pixwidth, pixwidth, 4, 0);
-	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 1 * pixwidth, pixwidth, 10, 5);
-	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 2 * pixwidth, pixwidth, 15, 11);
+	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf, pixwidth, 4, 0);
+	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + (pixwidth >> 1), pixwidth, 10, 5);
+	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + pixwidth, pixwidth, 15, 11);
 }
 
 void __no_inline_not_in_flash_func(flash_bulk_dma_start)(uint32_t *rxbuf, uint32_t flash_offs, size_t len, uint dma_chan)
