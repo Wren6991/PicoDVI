@@ -1,6 +1,6 @@
 #include "tile.h"
 
-#include "pico/platform.h" // for __not_in_flash
+#include "pico.h" // for __not_in_flash
 #include "hardware/interp.h"
 
 #define __ram_func(foo) __not_in_flash(#foo) foo

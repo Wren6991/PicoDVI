@@ -8,7 +8,6 @@
 #include "hardware/gpio.h"
 #include "hardware/vreg.h"
 #include "hardware/structs/bus_ctrl.h"
-#include "hardware/structs/ssi.h"
 #include "hardware/dma.h"
 #include "pico/sem.h"
 

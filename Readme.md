@@ -1,3 +1,30 @@
+RP2350 PicoDVI Preview
+======================
+
+Changes from the public GitHub version:
+
+* All Arm assembly in `libdvi` has been ported to RISC-V and tuned for Hazard3
+* Some of the existing Arm assembly in `libdvi` has been tweaked for better performance on Cortex-M33
+* RGB encode now uses the SIO TMDS encoders by default on RP2350 (can be disabled by defining `DVI_USE_SIO_TMDS_ENCODE=0` -- see `software/libdvi/dvi_config_defs.h`)
+* Much of the Arm assembly in `libsprite` has been ported to RISC-V -- enough to run the stock demos
+
+Build instructions:
+
+```bash
+cd software
+mkdir build
+# PICO_PLATFORM can also be rp2350-riscv
+# List of DVI configs is in software/include/common_dvi_pin_configs.h
+cmake -DPICO_SDK_PATH=/path/to/sdk -DPICO_PLATFORM=rp2350 -DPICO_COPY_TO_RAM=1 -DDVI_DEFAULT_SERIAL_CONFIG=pico_sock_cfg ..
+make -j$(nproc)
+# Then flash a binary, e.g.:
+cp apps/tiles_and_sprites/tiles_and_sprites.uf2
+```
+
+If you plan to run the `vista` demo, then note that there are now two UF2 data files, `software/assets/vista_data_rp2040.uf2` and `software/assets/vista_data_rp2350.uf2`. The only difference is the family IDs: the first can be dragged on RP2040 and on RP2350 A0, and the second can be dragged on RP2350 A1 and later.
+
+The following is the original RP2040 writeup:
+
 Bitbanged DVI on the RP2040 Microcontroller
 ===========================================
 

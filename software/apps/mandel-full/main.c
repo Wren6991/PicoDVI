@@ -8,7 +8,6 @@
 #include "hardware/pll.h"
 #include "hardware/sync.h"
 #include "hardware/structs/bus_ctrl.h"
-#include "hardware/structs/ssi.h"
 #include "hardware/vreg.h"
 #include "pico/multicore.h"
 #include "pico/sem.h"
