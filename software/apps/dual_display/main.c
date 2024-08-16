@@ -31,17 +31,19 @@ void display_scrolling_testcard(struct dvi_inst *inst, const uint8_t *img) {
 	const uint blue_msb  = 1;
 	const uint blue_lsb  = 0;
 	uint pixwidth = inst->timing->h_active_pixels;
+	uint words_per_channel = pixwidth / DVI_SYMBOLS_PER_WORD;
 	uint frame_ctr = 0;
 	while (true) {
+		// Legacy. Better use dvi_scanbuf_main_8bpp().
 		for (uint y = 0; y < FRAME_HEIGHT; ++y) {
 			uint y_scroll = (y + frame_ctr) % FRAME_HEIGHT;
 			const uint8_t *colourbuf = &((const uint8_t*)img)[y_scroll * FRAME_WIDTH];
 			uint32_t *tmdsbuf;
 			queue_remove_blocking_u32(&inst->q_tmds_free, &tmdsbuf);
 			// NB the scanline buffers are half-resolution!
-			tmds_encode_data_channel_8bpp((const uint32_t*)colourbuf, tmdsbuf, pixwidth / 2, blue_msb, blue_lsb);
-			tmds_encode_data_channel_8bpp((const uint32_t*)colourbuf, tmdsbuf + pixwidth, pixwidth / 2, green_msb, green_lsb);
-			tmds_encode_data_channel_8bpp((const uint32_t*)colourbuf, tmdsbuf + 2 * pixwidth, pixwidth / 2, red_msb, red_lsb);
+			tmds_encode_data_channel_8bpp((const uint32_t*)colourbuf, tmdsbuf + 0 * words_per_channel, pixwidth / 2, blue_msb, blue_lsb);
+			tmds_encode_data_channel_8bpp((const uint32_t*)colourbuf, tmdsbuf + 1 * words_per_channel, pixwidth / 2, green_msb, green_lsb);
+			tmds_encode_data_channel_8bpp((const uint32_t*)colourbuf, tmdsbuf + 2 * words_per_channel, pixwidth / 2, red_msb, red_lsb);
 			queue_add_blocking_u32(&inst->q_tmds_valid, &tmdsbuf);
 		}
 		++frame_ctr;
