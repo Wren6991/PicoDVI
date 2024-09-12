@@ -117,4 +117,13 @@ static const struct dvi_serialiser_cfg waveshare_rp2040_pizero = {
 	.invert_diffpairs = false
 };
 
+// Spotgear Pico not HDMI board
+static const struct dvi_serialiser_cfg spotgear_pico_cfg = {
+        .pio = DVI_DEFAULT_PIO_INST,
+        .sm_tmds = {0, 1, 2},
+        .pins_tmds = {10, 12, 14},
+        .pins_clk = 8,
+        .invert_diffpairs = true
+};
+
 #endif
