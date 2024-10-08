@@ -191,7 +191,11 @@ static void __dvi_func(dvi_dma_irq_handler)(struct dvi_inst *inst) {
 	// Make sure all three channels have definitely loaded their last block
 	// (should be within a few cycles of one another)
 	for (int i = 0; i < N_TMDS_LANES; ++i) {
+#if PICO_SDK_VERSION_MAJOR == 2
+		while (dma_debug_hw->ch[inst->dma_cfg[i].chan_data].dbg_tcr != inst->timing->h_active_pixels / DVI_SYMBOLS_PER_WORD)
+#else
 		while (dma_debug_hw->ch[inst->dma_cfg[i].chan_data].tcr != inst->timing->h_active_pixels / DVI_SYMBOLS_PER_WORD)
+#endif
 			tight_loop_contents();
 	}
 
