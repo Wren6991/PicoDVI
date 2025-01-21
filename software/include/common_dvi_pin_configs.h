@@ -117,4 +117,13 @@ static const struct dvi_serialiser_cfg waveshare_rp2040_pizero = {
 	.invert_diffpairs = false
 };
 
+// Olimex RP2040PC, RP2040-Pico-PC, Neo6502, 
+static struct dvi_serialiser_cfg olimex_rp2040_cfg = {
+    .pio = DVI_DEFAULT_PIO_INST,
+    .sm_tmds = {0, 1, 2},
+    .pins_tmds = {14, 18, 16},
+    .pins_clk = 12,
+    .invert_diffpairs = true
+};
+
 #endif
