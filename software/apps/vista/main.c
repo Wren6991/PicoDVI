@@ -7,11 +7,17 @@
 #include "hardware/pll.h"
 #include "hardware/sync.h"
 #include "hardware/structs/bus_ctrl.h"
-#include "hardware/structs/ssi.h"
 #include "hardware/vreg.h"
 #include "pico/multicore.h"
 #include "pico/sem.h"
 #include "pico/stdlib.h"
+#if PICO_RP2040
+#include "hardware/structs/ssi.h"
+#else
+#include "hardware/structs/xip_ctrl.h"
+#include "hardware/structs/xip_aux.h"
+#include "hardware/structs/qmi.h"
+#endif
 
 #include "tmds_encode.h"
 
@@ -45,27 +51,40 @@ static inline void prepare_scanline(const uint32_t *colourbuf, uint32_t *tmdsbuf
 	tmds_encode_data_channel_fullres_16bpp(colourbuf, tmdsbuf + 2 * pixwidth, pixwidth, 15, 11);
 }
 
-void __no_inline_not_in_flash_func(flash_bulk_dma_start)(uint32_t *rxbuf, uint32_t flash_offs, size_t len, uint dma_chan)
-{
+void __no_inline_not_in_flash_func(flash_bulk_dma_start)(uint32_t *rxbuf, uint32_t flash_offs, size_t len, uint dma_chan) {
+#if PICO_RP2040
+	// On RP2040, program the SSI to clock the correct amount of data without stopping
 	ssi_hw->ssienr = 0;
 	ssi_hw->ctrlr1 = len - 1; // NDF, number of data frames
 	ssi_hw->dmacr = SSI_DMACR_TDMAE_BITS | SSI_DMACR_RDMAE_BITS;
 	ssi_hw->ssienr = 1;
 	// Other than NDF, the SSI configuration used for XIP is suitable for a bulk read too.
-
-	dma_hw->ch[dma_chan].read_addr = (uint32_t)&ssi_hw->dr0;
+	const uintptr_t read_addr = (uintptr_t)&ssi_hw->dr0;
+	const uint dreq = DREQ_XIP_SSIRX;
+	const bool bswap = true;
+#else
+	// On RP2350, SSI is gone, but XIP streaming is fast enough to keep up with this demo
+	// (you can still DMA to the DIRECT_MODE FIFOs if you really need 100%)
+	xip_ctrl_hw->stream_addr = flash_offs;
+	xip_ctrl_hw->stream_ctr = len;
+	const uintptr_t read_addr = (uintptr_t)&xip_aux_hw->stream;
+	const uint dreq = DREQ_XIP_STREAM;
+	const bool bswap = false;
+#endif
+	dma_hw->ch[dma_chan].read_addr = read_addr;
 	dma_hw->ch[dma_chan].write_addr = (uint32_t)rxbuf;
 	dma_hw->ch[dma_chan].transfer_count = len;
 	dma_hw->ch[dma_chan].ctrl_trig =
-		DMA_CH0_CTRL_TRIG_BSWAP_BITS |
-		DREQ_XIP_SSIRX << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB |
+		(uint)bswap << DMA_CH0_CTRL_TRIG_BSWAP_LSB |
+		dreq << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB |
 		dma_chan << DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB |
 		DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS |
 		DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB |
 		DMA_CH0_CTRL_TRIG_EN_BITS;
-
+#if PICO_RP2040
 	// Now DMA is waiting, kick off the SSI transfer (mode continuation bits in LSBs)
 	ssi_hw->dr0 = (flash_offs << 8) | 0xa0;
+#endif
 }
 
 // Core 1 handles DMA IRQs and runs TMDS encode on scanline buffers it
@@ -90,6 +109,15 @@ int __not_in_flash("main") main() {
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(10);
 	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, true);
+
+	// A0 SDK won't pick up on the PICO_EMBED_XIP_SETUP flag, so just to make sure:
+#if PICO_RP2350
+	hw_write_masked(
+		&qmi_hw->m[0].timing,
+		3 << QMI_M0_TIMING_RXDELAY_LSB | 2 << QMI_M0_TIMING_CLKDIV_LSB,
+		QMI_M0_TIMING_RXDELAY_BITS | QMI_M0_TIMING_CLKDIV_BITS
+	);
+#endif
 
 	setup_default_uart();
 
@@ -131,21 +159,25 @@ int __not_in_flash("main") main() {
 		}
 		for (int y = 0; y < 2 * FRAME_HEIGHT; y += 2) {
 			// Start DMA to back buffer before starting to encode the front buffer (each buffer is two scanlines)
+#if !PICO_RP2040
+			// On RP2040 we could never reach this point early, because of the slow encode!
+			dma_channel_wait_for_finish_blocking(img_dma_chan);
+#endif
 			flash_bulk_dma_start(
 				(uint32_t*)img_buf[img_buf_back],
 				current_image_base + ((y + 2) % (2 * FRAME_HEIGHT)) * IMAGE_SCANLINE_SIZE,
 				IMAGE_SCANLINE_SIZE * 2 / sizeof(uint32_t),
 				img_dma_chan
 			);
-			const uint16_t *img = (const uint16_t*)img_buf[img_buf_front];			
+			const uint16_t *img = (const uint16_t*)img_buf[img_buf_front];
 			uint32_t *our_tmds_buf, *their_tmds_buf;
 			queue_remove_blocking_u32(&dvi0.q_tmds_free, &their_tmds_buf);
 			multicore_fifo_push_blocking((uint32_t)(img));
 			multicore_fifo_push_blocking((uint32_t)their_tmds_buf);
-	
+
 			queue_remove_blocking_u32(&dvi0.q_tmds_free, &our_tmds_buf);
 			prepare_scanline((const uint32_t*)(img + FRAME_WIDTH * 2), our_tmds_buf);
-			
+
 			multicore_fifo_pop_blocking();
 			queue_add_blocking_u32(&dvi0.q_tmds_valid, &their_tmds_buf);
 			queue_add_blocking_u32(&dvi0.q_tmds_valid, &our_tmds_buf);
@@ -156,4 +188,3 @@ int __not_in_flash("main") main() {
 	}
 	__builtin_unreachable();
 }
-	

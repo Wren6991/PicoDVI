@@ -127,8 +127,10 @@ void __not_in_flash("render") render_loop() {
 			tile16(pixbuf, &bg1, y, FRAME_WIDTH);
 			queue_add_blocking(&dvi0.q_colour_valid, &pixbuf);
 		}
-		bg0.xscroll += 1;
-		bg1.xscroll += 2;
+		bg1.xscroll += 1;
+		if (frame_ctr & 1) {
+			bg0.xscroll += 1;
+		}
 		++frame_ctr;
 	}
 }

@@ -1,9 +1,11 @@
 #include "hardware/regs/addressmap.h"
 #include "hardware/regs/sio.h"
 
+#ifndef __riscv
 .syntax unified
 .cpu cortex-m0plus
 .thumb
+#endif
 
 // Using the following:
 //
@@ -46,12 +48,13 @@
 // r8 contains a pointer to the font bitmap for this scanline.
 // r9 contains the TMDS LUT base.
 .macro do_char charbuf_offs colour_shift_instr colour_shamt
+#ifndef __riscv
 	// Get 8x font bits for next character, put 4 LSBs in bits 6:3 of r4 (so
 	// scaled to 8-byte LUT entries), and 4 MSBs in bits 6:3 of r6.
-	ldrb r4, [r0, #\charbuf_offs]                                     // 2
-	add r4, r8                                                        // 1
-	ldrb r4, [r4]                                                     // 2
-	lsrs r6, r4, #4                                                   // 1
+	ldrb r4, [r0, #\charbuf_offs]                                     // 2 (note these cycle
+	add r4, r8                                                        // 1  counts are for M0+
+	ldrb r4, [r4]                                                     // 2  and are a little
+	lsrs r6, r4, #4                                                   // 1  pessimistic on M33)
 	lsls r6, #3                                                       // 1
 	lsls r4, #28                                                      // 1
 	lsrs r4, #25                                                      // 1
@@ -67,6 +70,31 @@
 	ldmia r4, {r4, r5}                                                // 3
 	ldmia r6, {r6, r7}                                                // 3
 	stmia r2!, {r4-r7}                                                // 5
+#else
+	lbu a4, \charbuf_offs(a0)                                         // 1
+	\colour_shift_instr a5, a1, \colour_shamt                         // 1
+	add a4, a4, t1                                                    // 1
+	lbu a4, (a4)                                                      // 2
+	srli a6, a4, 4                                                    // 1
+	andi a4, a4, 0xf                                                  // 1
+
+	// Get colour bits, add to TMDS LUT base and font bits
+	and a5, a5, a3                                                    // 1
+	add a5, a5, t2                                                    // 1
+	sh3add a4, a4, a5                                                 // 1
+	sh3add a6, a6, a5                                                 // 1
+
+	// Look up and write out 8 TMDS symbols
+	lw a5, 4(a4)                                                      // 1
+	lw a4, 0(a4)                                                      // 1
+	lw a7, 4(a6)                                                      // 1
+	lw a6, 0(a6)                                                      // 1
+	sw a4, 0(a2)                                                      // 1
+	sw a5, 4(a2)                                                      // 1
+	sw a6, 8(a2)                                                      // 1
+	sw a7, 12(a2)                                                     // 1
+	addi a2, a2, 16                                                   // 1
+#endif
 .endm
 
 
@@ -78,9 +106,12 @@
 
 .section .scratch_x.tmds_encode_font_2bpp, "ax"
 .global tmds_encode_font_2bpp
+#ifndef __riscv
 .type tmds_encode_font_2bpp,%function
 .thumb_func
+#endif
 tmds_encode_font_2bpp:
+#ifndef __riscv
 	push {r4-r7, lr}
 	mov r4, r8
 	mov r5, r9
@@ -123,6 +154,32 @@ tmds_encode_font_2bpp:
 	mov r10, r6
 	pop {r4-r7, pc}
 
+#else
+
+	sh1add t0, a3, a2
+	li a3, 0xf0 * 8
+
+	mv t1, a4
+	la t2, palettised_1bpp_tables
+	mv t3, a1
+
+	bgeu a2, t0, 2f
+1:
+	lw a1, (t3)
+	addi t3, t3, 4
+	do_char 0 slli 7
+	do_char 1 slli 3
+	do_char 2 srli 1
+	do_char 3 srli 5
+	do_char 4 srli 9
+	do_char 5 srli 13
+	do_char 6 srli 17
+	do_char 7 srli 21
+	addi a0, a0, 8
+	bltu a2, t0, 1b
+2:
+	ret
+#endif
 
 // Table generation:
 //	levels_2bpp_even = [0x05, 0x50, 0xaf, 0xfa]

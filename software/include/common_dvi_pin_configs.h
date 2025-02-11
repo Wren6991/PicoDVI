@@ -32,6 +32,17 @@ static const struct dvi_serialiser_cfg picodvi_reva_dvi_cfg = {
 	.invert_diffpairs = true
 };
 
+// AMY-DVI board, for getting HDMI from the RP2350 FPGA development platform,
+// again a cursed board that only a couple of people in the world possess:
+static const struct dvi_serialiser_cfg amy_dvi_cfg = {
+	.pio = DVI_DEFAULT_PIO_INST,
+	.sm_tmds = {0, 1, 2},
+	.pins_tmds = {14, 16, 18},
+	.pins_clk = 12,
+	.invert_diffpairs = true
+};
+
+
 // The not-HDMI socket on Rev C PicoDVI boards
 // (we don't talk about Rev B)
 static const struct dvi_serialiser_cfg picodvi_dvi_cfg = {
@@ -107,6 +118,24 @@ static const struct dvi_serialiser_cfg adafruit_dvibell_cfg = {
   .pins_tmds = {10, 8, 6},
   .pins_clk = 12,
   .invert_diffpairs = false,
+};
+
+// Waveshare RP2040-PiZero
+static const struct dvi_serialiser_cfg waveshare_rp2040_pizero = {
+	.pio = DVI_DEFAULT_PIO_INST,
+	.sm_tmds = {0, 1, 2},
+	.pins_tmds = {26, 24, 22},
+	.pins_clk = 28,
+	.invert_diffpairs = false
+};
+
+// Olimex RP2040PC, RP2040-Pico-PC, Neo6502, 
+static struct dvi_serialiser_cfg olimex_rp2040_cfg = {
+    .pio = DVI_DEFAULT_PIO_INST,
+    .sm_tmds = {0, 1, 2},
+    .pins_tmds = {14, 18, 16},
+    .pins_clk = 12,
+    .invert_diffpairs = true
 };
 
 #endif

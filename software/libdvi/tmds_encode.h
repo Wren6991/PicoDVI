@@ -4,11 +4,6 @@
 #include "hardware/interp.h"
 #include "dvi_config_defs.h"
 
-#if defined(__cplusplus)
-extern "C"
-{
-#endif
-
 // Functions from tmds_encode.c
 void tmds_encode_data_channel_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
 void tmds_encode_data_channel_8bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
@@ -39,8 +34,23 @@ void tmds_fullres_encode_loop_16bpp_leftshift_y(const uint32_t *pixbuf, uint32_t
 void tmds_palette_encode_loop_x(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 void tmds_palette_encode_loop_y(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 
-#if defined(__cplusplus)
-}
+#if !PICO_RP2040
+// Crank the SIO TMDS encoder:
+void tmds_encode_sio_loop_poppop_ratio1(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio2(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio4(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio8(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio16(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio32(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio64(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+
+void tmds_encode_sio_loop_peekpop_ratio1(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio2(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio4(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio8(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio16(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio32(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio64(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
 #endif
 
 #endif

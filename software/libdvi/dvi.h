@@ -1,6 +1,10 @@
 #ifndef _DVI_H
 #define _DVI_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define N_TMDS_LANES 3
 #define TMDS_SYNC_LANE 0 // blue!
 

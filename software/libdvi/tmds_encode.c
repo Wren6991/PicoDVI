@@ -3,7 +3,7 @@
 #include "hardware/gpio.h"
 #include "hardware/sync.h"
 
-static const uint32_t __scratch_x("tmds_table") tmds_table[] = {
+static const __unused uint32_t __scratch_x("tmds_table") tmds_table[] = {
 #include "tmds_table.h"
 };
 
@@ -11,14 +11,15 @@ static const uint32_t __scratch_x("tmds_table") tmds_table[] = {
 // memory. There is a third copy which can go in flash, because it's just used
 // to generate palette LUTs. The ones we don't use will get garbage collected
 // during linking.
-const uint32_t __scratch_x("tmds_table_fullres_x") tmds_table_fullres_x[] = {
+const __unused uint32_t __scratch_x("tmds_table_fullres_x") tmds_table_fullres_x[] = {
 #include "tmds_table_fullres.h"
 };
 
-const uint32_t __scratch_y("tmds_table_fullres_y") tmds_table_fullres_y[] = {
+const __unused uint32_t __scratch_y("tmds_table_fullres_y") tmds_table_fullres_y[] = {
 #include "tmds_table_fullres.h"
 };
 
+#if !DVI_USE_SIO_TMDS_ENCODER
 // Configure an interpolator to extract a single colour channel from each of a pair
 // of pixels, with the first pixel's lsb at pixel_lsb, and the pixels being
 // pixel_width wide. Produce a LUT address for the first pixel's colour data on
@@ -35,11 +36,16 @@ static int __not_in_flash_func(configure_interp_for_addrgen)(interp_hw_t *interp
 
 	int shift_channel_to_index = pixel_lsb + channel_msb - (lut_index_width - 1) - index_shift;
 	int oops = 0;
+#if PICO_RP2040
 	if (shift_channel_to_index < 0) {
 		// "It's ok we'll fix it in software"
 		oops = -shift_channel_to_index;
 		shift_channel_to_index = 0;
 	}
+#else
+	// Now a right-rotate, not a right-shift
+	shift_channel_to_index &= 0x1f;
+#endif
 
 	uint index_msb = index_shift + lut_index_width - 1;
 
@@ -60,23 +66,60 @@ static int __not_in_flash_func(configure_interp_for_addrgen)(interp_hw_t *interp
 	return oops;
 }
 
+#else
+// Encoding a single channel at a time is not the most efficient way to use
+// this hardware, because it means we read the colour buffer multiple times,
+// but it fits better with how things are done in software on RP2040.
+static void __not_in_flash_func(configure_sio_tmds_for_single_channel)(uint channel_msb, uint channel_lsb, uint pixel_width, bool hdouble) {
+	assert(channel_msb - channel_lsb <= 7); // 1 through 8 bits, inclusive
+	sio_hw->tmds_ctrl =
+		SIO_TMDS_CTRL_CLEAR_BALANCE_BITS |
+		((channel_msb - channel_lsb) << SIO_TMDS_CTRL_L0_NBITS_LSB) |
+		(((channel_msb - 7u) & 0xfu) << SIO_TMDS_CTRL_L0_ROT_LSB) |
+		((1 + __builtin_ctz(pixel_width)) << SIO_TMDS_CTRL_PIX_SHIFT_LSB) |
+		((uint)hdouble << SIO_TMDS_CTRL_PIX2_NOSHIFT_LSB);
+}
+#endif
+
 // Extract up to 6 bits from a buffer of 16 bit pixels, and produce a buffer
 // of TMDS symbols from this colour channel. Number of pixels must be even,
 // pixel buffer must be word-aligned.
 
 void __not_in_flash_func(tmds_encode_data_channel_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
+#if DVI_USE_SIO_TMDS_ENCODER
+	configure_sio_tmds_for_single_channel(channel_msb, channel_lsb, 16, true);
+#if DVI_SYMBOLS_PER_WORD == 1
+	tmds_encode_sio_loop_peekpop_ratio4(pixbuf, symbuf, 2 * n_pix);
+#else
+	tmds_encode_sio_loop_poppop_ratio2(pixbuf, symbuf, 2 * n_pix);
+#endif
+#else
 	interp_hw_save_t interp0_save;
 	interp_save(interp0_hw, &interp0_save);
 	int require_lshift = configure_interp_for_addrgen(interp0_hw, channel_msb, channel_lsb, 0, 16, 6, tmds_table);
+#if PICO_RP2040
 	if (require_lshift)
 		tmds_encode_loop_16bpp_leftshift(pixbuf, symbuf, n_pix, require_lshift);
 	else
 		tmds_encode_loop_16bpp(pixbuf, symbuf, n_pix);
+#else
+	assert(!require_lshift); (void)require_lshift;
+	tmds_encode_loop_16bpp(pixbuf, symbuf, n_pix);
+#endif
 	interp_restore(interp0_hw, &interp0_save);
+#endif
 }
 
 // As above, but 8 bits per pixel, multiple of 4 pixels, and still word-aligned.
 void __not_in_flash_func(tmds_encode_data_channel_8bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
+#if DVI_USE_SIO_TMDS_ENCODER
+	configure_sio_tmds_for_single_channel(channel_msb, channel_lsb, 8, true);
+#if DVI_SYMBOLS_PER_WORD == 1
+	tmds_encode_sio_loop_peekpop_ratio8(pixbuf, symbuf, 2 * n_pix);
+#else
+	tmds_encode_sio_loop_poppop_ratio4(pixbuf, symbuf, 2 * n_pix);
+#endif
+#else
 	interp_hw_save_t interp0_save, interp1_save;
 	interp_save(interp0_hw, &interp0_save);
 	interp_save(interp1_hw, &interp1_save);
@@ -86,12 +129,18 @@ void __not_in_flash_func(tmds_encode_data_channel_8bpp)(const uint32_t *pixbuf, 
 	int require_lshift = configure_interp_for_addrgen(interp0_hw, channel_msb, channel_lsb, 0, 8, 6, tmds_table);
 	int lshift_upper = configure_interp_for_addrgen(interp1_hw, channel_msb, channel_lsb, 16, 8, 6, tmds_table);
 	assert(!lshift_upper); (void)lshift_upper;
+#if PICO_RP2040
 	if (require_lshift)	
 		tmds_encode_loop_8bpp_leftshift(pixbuf, symbuf, n_pix, require_lshift);
 	else
 		tmds_encode_loop_8bpp(pixbuf, symbuf, n_pix);
+#else
+	assert(!require_lshift); (void)require_lshift;
+	tmds_encode_loop_8bpp(pixbuf, symbuf, n_pix);
+#endif
 	interp_restore(interp0_hw, &interp0_save);
 	interp_restore(interp1_hw, &interp1_save);
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -103,16 +152,22 @@ void __not_in_flash_func(tmds_encode_data_channel_8bpp)(const uint32_t *pixbuf, 
 // pixels, and INTERP1 for odd pixels. Note this means that even and odd
 // symbols have their DC balance handled separately, which is not to spec.
 
+#if !DVI_USE_SIO_TMDS_ENCODER
 static int __not_in_flash_func(configure_interp_for_addrgen_fullres)(interp_hw_t *interp, uint channel_msb, uint channel_lsb, uint lut_index_width, const uint32_t *lutbase) {
 	const uint index_shift = 2; // scaled lookup for 4-byte LUT entries
 
 	int shift_channel_to_index = channel_msb - (lut_index_width - 1) - index_shift;
 	int oops = 0;
+#if PICO_RP2040
 	if (shift_channel_to_index < 0) {
 		// "It's ok we'll fix it in software"
 		oops = -shift_channel_to_index;
 		shift_channel_to_index = 0;
 	}
+#else
+	// Now a right-rotate rather than right-shift
+	shift_channel_to_index &= 0x1f;
+#endif
 
 	uint index_msb = index_shift + lut_index_width - 1;
 
@@ -133,8 +188,17 @@ static int __not_in_flash_func(configure_interp_for_addrgen_fullres)(interp_hw_t
 
 	return oops;
 }
+#endif
 
 void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb) {
+#if DVI_USE_SIO_TMDS_ENCODER
+	configure_sio_tmds_for_single_channel(channel_msb, channel_lsb, 16, false);
+#if DVI_SYMBOLS_PER_WORD == 1
+	tmds_encode_sio_loop_poppop_ratio2(pixbuf, symbuf, n_pix);
+#else
+	tmds_encode_sio_loop_poppop_ratio1(pixbuf, symbuf, n_pix);
+#endif
+#else
 	uint core = get_core_num();
 #if !TMDS_FULLRES_NO_INTERP_SAVE
 	interp_hw_save_t interp0_save, interp1_save;
@@ -165,17 +229,16 @@ void __not_in_flash_func(tmds_encode_data_channel_fullres_16bpp)(const uint32_t 
 	interp_restore(interp0_hw, &interp0_save);
 	interp_restore(interp1_hw, &interp1_save);
 #endif
+#endif
 }
 
 static const int8_t imbalance_lookup[16] = { -4, -2, -2, 0, -2, 0, 0, 2, -2, 0, 0, 2, 0, 2, 2, 4 };
 
-static inline int byte_imbalance(uint32_t x)
-{
+static inline int byte_imbalance(uint32_t x) {
 	return imbalance_lookup[x >> 4] + imbalance_lookup[x & 0xF];
 }
 
-static void tmds_encode_symbols(uint8_t pixel, uint32_t* negative_balance_sym, uint32_t* positive_balance_sym)
-{
+static void tmds_encode_symbols(uint8_t pixel, uint32_t* negative_balance_sym, uint32_t* positive_balance_sym) {
 	int pixel_imbalance = byte_imbalance(pixel);
 	uint32_t sym = pixel & 1;
 	if (pixel_imbalance > 0 || (pixel_imbalance == 0 && sym == 0)) {
@@ -191,7 +254,7 @@ static void tmds_encode_symbols(uint8_t pixel, uint32_t* negative_balance_sym, u
 	}
 
 	int imbalance = byte_imbalance(sym & 0xFF);
-  if (imbalance == 0) {
+	if (imbalance == 0) {
 		if ((sym & 0x100) == 0) sym ^= 0x2ff;
 		*positive_balance_sym = sym;
 		*negative_balance_sym = sym;
