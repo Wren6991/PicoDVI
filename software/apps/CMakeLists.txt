@@ -15,8 +15,10 @@ add_subdirectory(tiles)
 add_subdirectory(tiles_and_sprites)
 add_subdirectory(tiles_parallax)
 add_subdirectory(vista)
+add_subdirectory(my_terminal)
 if (PICO_RP2040)
 	# Needs porting to use XIP stream instead of SSI, as was done to vista
 	add_subdirectory(vista-palette)
 endif()
 add_subdirectory(mandel-full)
+

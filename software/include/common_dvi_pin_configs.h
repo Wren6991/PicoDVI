@@ -7,9 +7,11 @@
 
 #include "dvi_serialiser.h"
 
-#ifndef DVI_DEFAULT_SERIAL_CONFIG
-#define DVI_DEFAULT_SERIAL_CONFIG pico_sock_cfg
-#endif
+//#ifndef DVI_DEFAULT_SERIAL_CONFIG
+//#define DVI_DEFAULT_SERIAL_CONFIG pico_sock_cfg
+//#endif
+
+#define DVI_DEFAULT_SERIAL_CONFIG adafruit_hdmi_sock_cfg
 
 #ifndef DVI_DEFAULT_PIO_INST
 #define DVI_DEFAULT_PIO_INST pio0
@@ -126,4 +128,12 @@ static struct dvi_serialiser_cfg olimex_rp2040_cfg = {
     .invert_diffpairs = true
 };
 
+// Adafruit HDMI Sock (GP12-GP19)
+static const struct dvi_serialiser_cfg adafruit_hdmi_sock_cfg = {
+    .pio = pio0,
+    .sm_tmds = {0, 1, 2},
+    .pins_tmds = {12, 18, 16},  // D0 (Red/GP12), D1 (Green/GP18), D2 (Blue/GP16)
+    .pins_clk = 14,             // Clock (GP14)
+    .invert_diffpairs = false    // No inversion needed
+};
 #endif

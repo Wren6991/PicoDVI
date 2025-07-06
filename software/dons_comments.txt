@@ -1,0 +1,25 @@
+#!/bin/bash
+# Navigate to the software directory in PicoDVI
+cd /home/noneya/pico/PicoDVI/software
+
+# Create a build directory
+mkdir -p build
+cd build
+
+# Run CMake with your specific paths and configuration
+# Using PICO_SDK_PATH and PICO_EXTRAS_PATH from .bashrc
+# Set PICO_PLATFORM to rp2040 for your Pico RP2040
+# Set DVI_DEFAULT_SERIAL_CONFIG to adafruit_hdmi_sock_cfg per your modification
+cmake -DPICO_SDK_PATH=/home/noneya/pico/pico-sdk \
+      -DPICO_EXTRAS_PATH=/home/noneya/pico/pico-extras \
+      -DPICO_PLATFORM=rp2040 \
+      -DPICO_COPY_TO_RAM=1 \
+      -DDVI_DEFAULT_SERIAL_CONFIG=adafruit_hdmi_sock_cfg ..
+
+# Compile using all available cores
+make -j$(nproc)
+
+# Copy the desired .uf2 file to the RP2040 (adjust the path if needed)
+# Example: Flash the tiles_and_sprites example
+# Ensure the Pico is in BOOTSEL mode and mounted (e.g., at /media/noneya/RPI-RP2)
+# cp apps/tiles_and_sprites/tiles_and_sprites.uf2 /media/noneya/RPI-RP2/
