@@ -1,3 +1,4 @@
+#include "pico.h"
 #include "hardware/regs/addressmap.h"
 #include "hardware/regs/sio.h"
 #include "dvi_config_defs.h"
