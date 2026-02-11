@@ -80,15 +80,6 @@ static const struct dvi_serialiser_cfg pico_sock_cfg = {
 	.invert_diffpairs = false
 };
 
-static const struct dvi_serialiser_cfg pico_sock_cfg = {
-        .pio = DVI_DEFAULT_PIO_INST,
-        .sm_tmds = {0, 1, 2},
-        .pins_tmds = {18, 16, 12},
-        .pins_clk = 14,
-        .invert_diffpairs = false
-};
-
-
 // The HDMI socket on Pimoroni Pico Demo HDMI
 // (we would talk about rev B if we had a rev B...)
 static const struct dvi_serialiser_cfg pimoroni_demo_hdmi_cfg = {
@@ -118,7 +109,7 @@ static const struct dvi_serialiser_cfg adafruit_feather_dvi_cfg = {
 };
 
 // Adafruit Feather RP2350 DVI
-static const struct dvi_serialiser_cfg adafruit_feather2350_dvi_cfg = {
+static const struct dvi_serialiser_cfg adafruit_feather_rp2350_dvi_cfg = {
         .pio = pio0,
         .sm_tmds = {0, 1, 2},
         .pins_tmds = {18, 16, 12},
