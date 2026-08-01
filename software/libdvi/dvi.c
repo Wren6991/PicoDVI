@@ -42,10 +42,25 @@ void dvi_init(struct dvi_inst *inst, uint spinlock_tmds_queue, uint spinlock_col
 
 	for (int i = 0; i < DVI_N_TMDS_BUFFERS; ++i) {
 		void *tmdsbuf;
+
+		// TMDS encoders write output in fixed-size chunks per loop iteration.
+		// We need to align the size of tmdsbuf accordingly to prevent overrun
+		// when the input pixel count is not a multiple of the chunk size.
+		//
+		// Encoder chunk sizes (in pixels):
+		//   - 1bpp:  32 * TMDS_ENCODE_UNROLL
+		//   - 8bpp:   8 * TMDS_ENCODE_UNROLL
+		//   - 16bpp:  4 * TMDS_ENCODE_UNROLL
+		//
+		// We align to 32 * TMDS_ENCODE_UNROLL pixels, which safely covers all
+		// current encoder variants.
+		const uint align_mask = 32 * TMDS_ENCODE_UNROLL - 1;
+		const uint n_pix = (inst->timing->h_active_pixels + align_mask) & ~align_mask;
+
 #if DVI_MONOCHROME_TMDS
-		tmdsbuf = malloc(inst->timing->h_active_pixels / DVI_SYMBOLS_PER_WORD * sizeof(uint32_t));
+		tmdsbuf = malloc(n_pix / DVI_SYMBOLS_PER_WORD * sizeof(uint32_t));
 #else
-		tmdsbuf = malloc(3 * inst->timing->h_active_pixels / DVI_SYMBOLS_PER_WORD * sizeof(uint32_t));
+		tmdsbuf = malloc(N_TMDS_LANES * n_pix / DVI_SYMBOLS_PER_WORD * sizeof(uint32_t));
 #endif
 		if (!tmdsbuf)
 			panic("TMDS buffer allocation failed");
