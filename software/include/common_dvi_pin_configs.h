@@ -126,4 +126,13 @@ static const struct dvi_serialiser_cfg olimex_rp2040_cfg = {
     .invert_diffpairs = true
 };
 
+// Waveshare RP2350-PiZero
+static const struct dvi_serialiser_cfg waveshare_rp2350_pizero = {
+    .pio              = pio0,
+    .sm_tmds          = {0, 1, 2},
+    .pins_tmds        = {36, 34, 32},
+    .pins_clk         = 38,
+    .invert_diffpairs = false
+};
+
 #endif
