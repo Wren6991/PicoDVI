@@ -108,6 +108,16 @@ static const struct dvi_serialiser_cfg adafruit_feather_dvi_cfg = {
 	.invert_diffpairs = true
 };
 
+// Adafruit Feather RP2350 DVI
+static const struct dvi_serialiser_cfg adafruit_feather_rp2350_dvi_cfg = {
+        .pio = pio0,
+        .sm_tmds = {0, 1, 2},
+        .pins_tmds = {18, 16, 12},
+        .pins_clk = 14,
+        .invert_diffpairs = false
+};
+
+
 // Waveshare RP2040-PiZero
 static const struct dvi_serialiser_cfg waveshare_rp2040_pizero = {
 	.pio = DVI_DEFAULT_PIO_INST,
